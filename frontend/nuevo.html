@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nuevo Proyecto de Ahorro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a href="index.html" class="brand">💡 Seguimiento de Ahorros</a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="nuevo.html">+ Nuevo Proyecto</a>
+    <a href="ideas.html">Banco de Ideas</a>
+  </nav>
+</header>
+
+<main class="container">
+  <h1>Nuevo Proyecto de Ahorro</h1>
+  <p class="hint">El proyecto corre automáticamente 12 meses desde la fecha de inicio que definas.</p>
+
+  <div id="flash-area"></div>
+
+  <form class="form-card card" id="form-proyecto">
+    <h3>1. Datos generales</h3>
+    <div class="row-2">
+      <div><label>Nombre del proyecto</label><input type="text" id="nombre" required></div>
+      <div><label>Área / Sector</label><input type="text" id="area" placeholder="Ej: Preparación de pasta"></div>
+    </div>
+    <div><label>Descripción</label><textarea id="descripcion" rows="2"></textarea></div>
+    <div class="row-2">
+      <div><label>Responsable</label><input type="text" id="responsable" required></div>
+      <div><label>Fecha de inicio</label><input type="date" id="fecha_inicio" required></div>
+    </div>
+    <div class="row-2">
+      <div>
+        <label>Objetivo esperado de ahorro ($)</label>
+        <input type="number" step="any" id="objetivo_valor" required>
+        <div class="hint">Ahorro total esperado a lo largo de los 12 meses.</div>
+      </div>
+      <div><label>Objetivo (descripción libre)</label><input type="text" id="objetivo_descripcion"></div>
+    </div>
+
+    <h3 class="section-title">2. Variables a cargar en cada medición</h3>
+    <p class="hint">Definí las variables que vas a ir cargando (ej: kw, ton). Se usan en la fórmula del indicador.</p>
+    <div id="variables-container">
+      <div class="var-row">
+        <input type="text" class="var_nombre" placeholder="nombre (ej: kw)" required>
+        <input type="text" class="var_label" placeholder="etiqueta (ej: Energía consumida)">
+        <input type="text" class="var_unidad" placeholder="unidad (ej: kWh)">
+        <button type="button" class="btn-small btn-secundario" onclick="this.parentElement.remove()">✕</button>
+      </div>
+      <div class="var-row">
+        <input type="text" class="var_nombre" placeholder="nombre (ej: ton)" required>
+        <input type="text" class="var_label" placeholder="etiqueta (ej: Toneladas producidas)">
+        <input type="text" class="var_unidad" placeholder="unidad (ej: t)">
+        <button type="button" class="btn-small btn-secundario" onclick="this.parentElement.remove()">✕</button>
+      </div>
+    </div>
+    <button type="button" class="btn-secundario btn-small" onclick="agregarFila()">+ Agregar variable</button>
+
+    <h3 class="section-title">3. Fórmula del indicador</h3>
+    <div>
+      <label>Expresión (usá los nombres de las variables de arriba, ej: kw / ton)</label>
+      <input type="text" id="expresion_indicador" required placeholder="kw / ton">
+      <div class="hint">Operadores: + - * / % (potencia usar pow(a,b)). Funciones: abs, round, min, max, sqrt, log.</div>
+    </div>
+    <div class="row-2">
+      <div><label>Unidad del indicador</label><input type="text" id="unidad_indicador" placeholder="Ej: kWh/ton"></div>
+      <div>
+        <label>Variable de volumen (para el ahorro total del período)</label>
+        <input type="text" id="variable_volumen" placeholder="Ej: ton">
+        <div class="hint">Opcional. Multiplica el indicador para obtener el ahorro $ del período.</div>
+      </div>
+    </div>
+
+    <h3 class="section-title">4. Línea de base y costo</h3>
+    <div class="row-3">
+      <div><label>Valor del indicador ANTES de la mejora</label><input type="number" step="any" id="valor_base_indicador" required></div>
+      <div><label>Costo unitario ($ por unidad del indicador)</label><input type="number" step="any" id="costo_unitario" required></div>
+      <div><label>Unidad del costo</label><input type="text" id="unidad_costo" placeholder="Ej: $/kWh"></div>
+    </div>
+    <div>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:400">
+        <input type="checkbox" id="menor_es_mejor" checked style="width:auto">
+        Un indicador MÁS BAJO representa ahorro (ej: consumo, merma). Desmarcar si es al revés (ej: rendimiento, OEE).
+      </label>
+    </div>
+
+    <button type="submit">Crear proyecto</button>
+  </form>
+</main>
+
+<footer class="footer">Papelera del Sur · Planta Tornquist · TPM / Mejora Enfocada</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/nuevo.js"></script>
+</body>
+</html>
