@@ -33,10 +33,10 @@ async function cargarIdeas() {
           <div class="nombre">${i.nombre}</div>
           <div class="meta">${i.area || "Sin área"} · Sugerido: ${i.responsable_sugerido || "-"} · Potencial: ${fmtMoney(i.potencial_estimado)}</div>
           <div class="meta">${i.descripcion || ""}</div>
-          ${i.fuente ? `<div class="meta"><span class="chip">${i.fuente}</span></div>` : ""}
+          ${i.fuente ? `<div class="meta">${chip(i.fuente)}</div>` : ""}
         </div>
         <div style="text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-          <span class="badge badge-${i.estado}">${i.estado.replace(/_/g, " ")}</span>
+          ${badgeEstado(i.estado)}
           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
             <select onchange="cambiarEstadoIdea(${i.id}, this.value)">${estadosSelect(i.estado)}</select>
             ${i.estado !== "convertida"

@@ -1,8 +1,14 @@
 /**
- * Cliente para hablar con el backend de Apps Script.
- * GET: parámetros en query string (nunca dispara preflight).
- * POST: Content-Type text/plain con JSON como texto (evita el preflight
- * OPTIONS que Apps Script no responde correctamente).
+ * Cliente HTTP contra el backend de Apps Script. Es la ÚNICA parte del
+ * frontend que sabe cómo hablar con el Web App — el resto de las páginas
+ * llaman a apiGet/apiPost y no les importa el detalle de CORS.
+ *
+ * GET:  los parámetros van en la query string. Nunca dispara un preflight
+ *       CORS, así que no hay restricciones de headers.
+ * POST: Apps Script no responde bien al preflight OPTIONS que dispara un
+ *       Content-Type "application/json". Por eso mandamos el body como
+ *       "text/plain" (no dispara preflight) y el propio Apps Script hace
+ *       JSON.parse(e.postData.contents) del lado del servidor.
  */
 async function apiGet(params) {
   const url = new URL(APPS_SCRIPT_URL);
@@ -22,8 +28,4 @@ async function apiPost(body) {
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || "Error desconocido");
   return json.data;
-}
-
-function fmtMoney(n) {
-  return "US$ " + Math.round(n || 0).toLocaleString("es-AR");
 }

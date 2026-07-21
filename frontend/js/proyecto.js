@@ -1,15 +1,16 @@
+/**
+ * Detalle de un proyecto: KPIs, gráfico de evolución (con filtros de mes y
+ * semana), formulario de carga por período, e histórico editable.
+ */
+
 const params = new URLSearchParams(window.location.search);
 const proyectoId = params.get("id");
 let chart = null;
-let P = null;                       // proyecto actual
+let P = null;                       // proyecto actual (última respuesta del backend)
 let periodoActual = "periodo";      // periodo | semanal | mensual | anual
 let filtroMes = "";
 let filtroSemana = "";
-let editandoRegistro = null;
-
-const ETIQUETA_SEMAFORO = {
-  verde: "En objetivo", amarillo: "En riesgo", rojo: "Desviado", sin_datos: "Sin datos",
-};
+let editandoRegistro = null;        // id del registro que se está editando inline, o null
 
 function hoyISO() { return new Date().toISOString().slice(0, 10); }
 
@@ -18,68 +19,71 @@ function haceDiasISO(n) {
   return d.toISOString().slice(0, 10);
 }
 
-function nombreMes(clave) {
-  const [a, m] = clave.split("-");
-  const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-  return `${meses[parseInt(m, 10) - 1]} ${a}`;
+/** Nota contextual según el tipo de objetivo del proyecto (ver README). */
+function notaObjetivo(p) {
+  if (p.tipo_objetivo === "mensual") {
+    return `<div class="hint">📌 Objetivo mensual fijo: <strong>${fmtMoney(p.objetivo_mensual)}</strong>/mes
+      (constante, no se reparte el anual en 12 partes iguales)</div>`;
+  }
+  if (p.tipo_objetivo === "dinamico") {
+    return `<div class="hint">📌 Objetivo dinámico: <strong>${fmtMoney(p.objetivo_unitario)}</strong> por unidad de
+      ${p.variable_volumen || "volumen"} (se recalcula solo según la producción real de cada período)</div>`;
+  }
+  return "";
 }
 
 async function render() {
   const cont = document.getElementById("contenido");
   try {
     P = await apiGet({ action: "proyecto", id: proyectoId });
-
     const avance = Math.max(P.avance_objetivo_pct, 0);
     const op = P.opciones_periodo;
 
     cont.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <div class="encabezado-proyecto">
         <div style="flex:1;min-width:280px">
-          <h1><span class="semaforo semaforo-${P.semaforo}"></span>${P.nombre}</h1>
+          <h1>${P.nombre}</h1>
           <p class="meta">${P.area || "Sin área"} · Responsable: <strong>${P.responsable}</strong></p>
           <p>${P.descripcion || ""}</p>
-          <div class="meta">
-            <span class="chip">${P.categoria_perdida_nombre}</span>
-            <span class="chip">${P.linea_pnl_nombre}</span>
-            ${P.contramedida ? `<span class="chip">${P.contramedida}</span>` : ""}
-          </div>
-          ${P.tipo_objetivo === "mensual"
-            ? `<div class="hint">Objetivo mensual fijo: <strong>${fmtMoney(P.objetivo_mensual)}</strong>/mes (constante, no se reparte el anual en 12 partes iguales)</div>`
-            : ""}
+          <div class="meta-chips">${chipsProyecto(P)}</div>
+          ${notaObjetivo(P)}
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+        <div class="acciones-encabezado">
+          ${semaforoPill(P.semaforo)}
           <select id="select-estado">
             ${["idea", "activo", "pausado", "cerrado_logrado", "cerrado_no_logrado"]
               .map((e) => `<option value="${e}" ${e === P.estado ? "selected" : ""}>${e.replace(/_/g, " ")}</option>`).join("")}
           </select>
           <a class="btn btn-small btn-secundario" href="nuevo.html?editar=${P.id}">✎ Editar proyecto</a>
-          <button class="btn btn-small btn-secundario" style="color:#c0392b" onclick="eliminarProyectoActual()">🗑 Eliminar proyecto</button>
+          <button class="btn btn-small btn-secundario btn-peligro" onclick="eliminarProyectoActual()">🗑 Eliminar proyecto</button>
         </div>
       </div>
 
       <div class="kpi-row">
         <div class="kpi">
+          <div class="kpi-icon">📅</div>
           <div class="kpi-label">Vigencia (12 meses)</div>
           <div class="kpi-value" style="font-size:1.05rem">${P.fecha_inicio} → ${P.fecha_fin}</div>
-          <div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${P.avance_tiempo_pct}%"></div></div>
+          ${barraProgreso(P.avance_tiempo_pct)}
           <div class="hint">${P.avance_tiempo_pct}% del tiempo transcurrido</div>
         </div>
         <div class="kpi ${P.ahorro_acumulado < 0 ? "kpi-negativo" : ""}">
-          <div class="kpi-label">Ahorro acumulado vs objetivo anual</div>
-          <div class="kpi-value" style="font-size:1.15rem">${fmtMoney(P.ahorro_acumulado)} / ${fmtMoney(P.objetivo_valor)}</div>
-          <div class="progress-bar-outer">
-            <div class="progress-bar-inner ${P.avance_objetivo_pct < 0 ? "negativo" : ""}" style="width:${Math.min(avance, 100)}%"></div>
-          </div>
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-label">Ahorro acumulado vs objetivo</div>
+          <div class="kpi-value" style="font-size:1.1rem">${fmtMoney(P.ahorro_acumulado)} / ${fmtMoney(P.objetivo_valor)}</div>
+          ${barraProgreso(P.avance_objetivo_pct)}
           <div class="hint">${P.avance_objetivo_pct}% del objetivo</div>
         </div>
         <div class="kpi ${P.semaforo === "rojo" ? "kpi-negativo" : ""}">
-          <div class="kpi-label">Cumplimiento a la fecha — ${ETIQUETA_SEMAFORO[P.semaforo]}</div>
+          <div class="kpi-icon">${P.semaforo === "verde" ? "✅" : P.semaforo === "rojo" ? "⚠️" : "🟡"}</div>
+          <div class="kpi-label">Cumplimiento a la fecha</div>
           <div class="kpi-value">${P.cumplimiento_pct}%</div>
-          <div class="hint">Debería llevar ${fmtMoney(P.objetivo_a_la_fecha)} a hoy</div>
+          <div class="hint">Debería llevar ${fmtMoney(P.objetivo_a_la_fecha)} a hoy — ${ETIQUETA_SEMAFORO[P.semaforo]}</div>
         </div>
         <div class="kpi">
+          <div class="kpi-icon">📈</div>
           <div class="kpi-label">Proyección a 12 meses</div>
-          <div class="kpi-value" style="font-size:1.15rem">${fmtMoney(P.proyeccion_final)}</div>
+          <div class="kpi-value" style="font-size:1.1rem">${fmtMoney(P.proyeccion_final)}</div>
           <div class="hint">${P.proyeccion_vs_objetivo_pct}% del objetivo · última carga: ${P.ultima_carga || "nunca"}${P.dias_sin_cargar !== null ? ` (hace ${P.dias_sin_cargar} d)` : ""}</div>
         </div>
       </div>
@@ -180,8 +184,7 @@ async function render() {
 function registrosVisibles() {
   return P.registros.filter((r) => {
     const anchor = r.fecha_hasta || r.fecha_desde;
-    if (filtroMes && anchor.slice(0, 7) !== filtroMes) return false;
-    return true;
+    return !filtroMes || anchor.slice(0, 7) === filtroMes;
   });
 }
 
@@ -210,8 +213,8 @@ function renderTabla() {
     }
     return `<tr>
       <td style="white-space:nowrap">${r.fecha_desde} → ${r.fecha_hasta}</td>
-      ${P.variables.map((v) => `<td>${r.valores[v.nombre] !== undefined ? Number(r.valores[v.nombre]).toLocaleString("es-AR") : "-"}</td>`).join("")}
-      <td>${r.indicador != null ? r.indicador.toLocaleString("es-AR", { maximumFractionDigits: 3 }) : "-"}</td>
+      ${P.variables.map((v) => `<td>${r.valores[v.nombre] !== undefined ? fmtNumero(r.valores[v.nombre]) : "-"}</td>`).join("")}
+      <td>${r.indicador != null ? fmtNumero(r.indicador, 3) : "-"}</td>
       <td class="${(r.ahorro_periodo || 0) >= 0 ? "valor-positivo" : "valor-negativo"}">${fmtMoney(r.ahorro_periodo)}</td>
       <td>${r.cargado_por || "-"}</td>
       <td style="white-space:nowrap">
@@ -249,32 +252,45 @@ async function borrarRegistro(id) {
   await render();
 }
 
+/** Callback de tooltip de Chart.js: formatea el valor de cada dataset en US$. */
+function tooltipEnDolaresLocal(ctx) {
+  return `${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y ?? ctx.raw)}`;
+}
+
 async function refrescarGrafico() {
   const q = { action: "evolucion", id: proyectoId, periodo: periodoActual };
   if (filtroMes) q.mes = filtroMes;
   if (filtroSemana) q.semana = filtroSemana;
   const data = await apiGet(q);
 
-  const resumen = document.getElementById("resumen-filtro");
   const totalFiltrado = data.ahorro_periodo.reduce((s, v) => s + v, 0);
   let texto = `${data.etiquetas.length} período(s) — ahorro total mostrado: <strong>${fmtMoney(totalFiltrado)}</strong>`;
   if (filtroMes) texto += ` · filtrado por ${nombreMes(filtroMes)}`;
   if (filtroSemana) texto += ` · filtrado por semana ${filtroSemana}`;
-  resumen.innerHTML = texto;
+  document.getElementById("resumen-filtro").innerHTML = texto;
+
+  const etiquetas = periodoActual === "mensual" ? data.etiquetas.map(nombreMes) : data.etiquetas;
 
   const ctx = document.getElementById("grafico").getContext("2d");
   if (chart) chart.destroy();
   chart = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: data.etiquetas,
+      labels: etiquetas,
       datasets: [
-        { label: "Ahorro del período", data: data.ahorro_periodo, backgroundColor: "#7FA76A", order: 2 },
+        { label: "Ahorro del período", data: data.ahorro_periodo, backgroundColor: "#7FA76A", order: 2, borderRadius: 3 },
         { label: "Objetivo del período", data: data.objetivo_periodo, type: "line", borderColor: "#c98a12", borderDash: [5, 4], pointRadius: 0, fill: false, order: 1 },
         { label: "Ahorro acumulado", data: data.ahorro_acumulado, type: "line", borderColor: "#2E4A1C", backgroundColor: "rgba(46,74,28,0.1)", fill: true, tension: 0.25, order: 0 },
       ],
     },
-    options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 12, padding: 12 } },
+        tooltip: { callbacks: { label: tooltipEnDolaresLocal } },
+      },
+      scales: { y: { beginAtZero: true, ticks: { callback: (v) => fmtMoney(v) } } },
+    },
   });
 
   renderTabla();
@@ -301,7 +317,10 @@ async function cargarRegistro(ev) {
         observaciones: document.getElementById("reg_observaciones").value,
       },
     });
-    flash.innerHTML = `<div class="flash flash-success">Guardado. Indicador: ${r.indicador.toLocaleString("es-AR", { maximumFractionDigits: 3 })} · ${r.ahorro_periodo >= 0 ? "Ahorro" : "Pérdida"}: ${fmtMoney(r.ahorro_periodo)}</div>`;
+    const tipoResultado = r.ahorro_periodo >= 0 ? "Ahorro" : "Pérdida";
+    flash.innerHTML = `<div class="flash flash-success">
+      Guardado. Indicador: ${fmtNumero(r.indicador, 3)} · ${tipoResultado}: ${fmtMoney(r.ahorro_periodo)}
+    </div>`;
     setTimeout(render, 900);
   } catch (e) {
     flash.innerHTML = `<div class="flash flash-danger">${e.message}</div>`;
