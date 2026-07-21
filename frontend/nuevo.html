@@ -12,83 +12,165 @@
   <nav>
     <a href="index.html">Dashboard</a>
     <a href="nuevo.html">+ Nuevo Proyecto</a>
+    <a href="arbol.html">Árbol de Pérdidas</a>
     <a href="ideas.html">Banco de Ideas</a>
   </nav>
 </header>
 
 <main class="container">
-  <h1>Nuevo Proyecto de Ahorro</h1>
-  <p class="hint">El proyecto corre automáticamente 12 meses desde la fecha de inicio que definas.</p>
+  <h1 id="titulo-pagina">Nuevo Proyecto de Ahorro</h1>
+  <p class="hint">El proyecto corre automáticamente 12 meses desde la fecha de inicio.</p>
 
   <div id="flash-area"></div>
 
   <form class="form-card card" id="form-proyecto">
+
     <h3>1. Datos generales</h3>
     <div class="row-2">
       <div><label>Nombre del proyecto</label><input type="text" id="nombre" required></div>
       <div><label>Área / Sector</label><input type="text" id="area" placeholder="Ej: Preparación de pasta"></div>
     </div>
-    <div><label>Descripción</label><textarea id="descripcion" rows="2"></textarea></div>
+    <div><label>Descripción de la mejora</label><textarea id="descripcion" rows="2"></textarea></div>
     <div class="row-2">
       <div><label>Responsable</label><input type="text" id="responsable" required></div>
       <div><label>Fecha de inicio</label><input type="date" id="fecha_inicio" required></div>
     </div>
     <div class="row-2">
       <div>
-        <label>Objetivo esperado de ahorro ($)</label>
+        <label>Objetivo de ahorro para los 12 meses ($)</label>
         <input type="number" step="any" id="objetivo_valor" required>
-        <div class="hint">Ahorro total esperado a lo largo de los 12 meses.</div>
       </div>
-      <div><label>Objetivo (descripción libre)</label><input type="text" id="objetivo_descripcion"></div>
+      <div><label>Objetivo en palabras</label><input type="text" id="objetivo_descripcion" placeholder="Ej: Reducir consumo específico 8%"></div>
     </div>
 
-    <h3 class="section-title">2. Variables a cargar en cada medición</h3>
-    <p class="hint">Definí las variables que vas a ir cargando (ej: kw, ton). Se usan en la fórmula del indicador.</p>
+    <h3 class="section-title">2. Impacto en la estructura de costos</h3>
+    <div class="ayuda">
+      Acá conectás el proyecto con el <strong>árbol de pérdidas</strong> y con el <strong>P&amp;L</strong>.
+      Esto es lo que después permite ver, en una sola vista, qué rama de pérdidas estás atacando
+      y sobre qué línea de costo impacta la mejora.
+    </div>
+    <div class="row-3">
+      <div>
+        <label>Categoría de pérdida (árbol JIPM)</label>
+        <select id="categoria_perdida" required><option value="">Cargando…</option></select>
+      </div>
+      <div>
+        <label>Línea del P&amp;L donde impacta</label>
+        <select id="linea_pnl" required><option value="">Cargando…</option></select>
+      </div>
+      <div>
+        <label>Tipo de impacto</label>
+        <select id="tipo_impacto"><option value="">Cargando…</option></select>
+      </div>
+    </div>
+    <div>
+      <label>Contramedida principal (cómo se baja el costo)</label>
+      <input type="text" id="contramedida" placeholder="Ej: Variadores de frecuencia + secuencia de arranque escalonada">
+    </div>
+
+    <h3 class="section-title">3. ¿Qué vas a medir? (variables)</h3>
+    <div class="ayuda">
+      Definí <strong>los datos crudos que vas a cargar cada semana</strong>, tal como te llegan de planta.
+      Todavía no es la cuenta, son solo los números de entrada.
+      <ul>
+        <li><strong>Nombre corto</strong>: el que se usa en la fórmula. Sin espacios ni acentos. Ej: <code>kw</code>, <code>ton</code>, <code>merma</code>.</li>
+        <li><strong>Etiqueta</strong>: el nombre que ve la persona que carga. Ej: <code>Energía consumida en la semana</code>.</li>
+        <li><strong>Unidad</strong>: en qué se mide. Ej: <code>kWh</code>, <code>t</code>, <code>kg</code>.</li>
+      </ul>
+      <em>Ejemplo típico de energía:</em> una variable <code>kw</code> (kWh consumidos en la semana)
+      y otra <code>ton</code> (toneladas producidas en esa misma semana).
+    </div>
     <div id="variables-container">
       <div class="var-row">
-        <input type="text" class="var_nombre" placeholder="nombre (ej: kw)" required>
+        <input type="text" class="var_nombre" placeholder="nombre corto (ej: kw)" required>
         <input type="text" class="var_label" placeholder="etiqueta (ej: Energía consumida)">
         <input type="text" class="var_unidad" placeholder="unidad (ej: kWh)">
-        <button type="button" class="btn-small btn-secundario" onclick="this.parentElement.remove()">✕</button>
+        <button type="button" class="btn-small btn-secundario" onclick="quitarFila(this)">✕</button>
       </div>
       <div class="var-row">
-        <input type="text" class="var_nombre" placeholder="nombre (ej: ton)" required>
+        <input type="text" class="var_nombre" placeholder="nombre corto (ej: ton)" required>
         <input type="text" class="var_label" placeholder="etiqueta (ej: Toneladas producidas)">
         <input type="text" class="var_unidad" placeholder="unidad (ej: t)">
-        <button type="button" class="btn-small btn-secundario" onclick="this.parentElement.remove()">✕</button>
+        <button type="button" class="btn-small btn-secundario" onclick="quitarFila(this)">✕</button>
       </div>
     </div>
     <button type="button" class="btn-secundario btn-small" onclick="agregarFila()">+ Agregar variable</button>
 
-    <h3 class="section-title">3. Fórmula del indicador</h3>
-    <div>
-      <label>Expresión (usá los nombres de las variables de arriba, ej: kw / ton)</label>
-      <input type="text" id="expresion_indicador" required placeholder="kw / ton">
-      <div class="hint">Operadores: + - * / % (potencia usar pow(a,b)). Funciones: abs, round, min, max, sqrt, log.</div>
+    <h3 class="section-title">4. ¿Cómo se calcula el indicador?</h3>
+    <div class="ayuda">
+      El <strong>indicador</strong> es el número que mide la eficiencia del proceso, normalmente
+      <em>consumo por unidad producida</em>. Se escribe como una cuenta usando los nombres cortos de arriba.
+      <ul>
+        <li>Energía: <code>kw / ton</code> → kWh por tonelada.</li>
+        <li>Merma: <code>merma / ton</code> → kg de merma por tonelada.</li>
+        <li>Químicos: <code>kg_quimico / ton</code> → kg de químico por tonelada.</li>
+      </ul>
+      <strong>Variable de volumen:</strong> es la que representa <em>cuánto produjiste</em> en ese período
+      (casi siempre <code>ton</code>). Se usa para convertir el ahorro por tonelada en el ahorro
+      total en pesos del período. Si la dejás vacía, el ahorro no se multiplica por volumen.
     </div>
     <div class="row-2">
-      <div><label>Unidad del indicador</label><input type="text" id="unidad_indicador" placeholder="Ej: kWh/ton"></div>
       <div>
-        <label>Variable de volumen (para el ahorro total del período)</label>
-        <input type="text" id="variable_volumen" placeholder="Ej: ton">
-        <div class="hint">Opcional. Multiplica el indicador para obtener el ahorro $ del período.</div>
+        <label>Fórmula del indicador</label>
+        <input type="text" id="expresion_indicador" required placeholder="kw / ton">
+        <div class="hint">Operadores: + − * / % · Funciones: abs, round, min, max, sqrt, log, pow(a,b)</div>
+      </div>
+      <div>
+        <label>Unidad del indicador</label>
+        <input type="text" id="unidad_indicador" placeholder="Ej: kWh/ton">
       </div>
     </div>
+    <div>
+      <label>Variable de volumen del período</label>
+      <input type="text" id="variable_volumen" placeholder="Ej: ton">
+    </div>
 
-    <h3 class="section-title">4. Línea de base y costo</h3>
+    <h3 class="section-title">5. ¿Contra qué se compara? (línea de base y costo)</h3>
+    <div class="ayuda">
+      Acá definís el <strong>punto de partida</strong>: cómo venía el proceso <em>antes</em> de la mejora.
+      Todo ahorro se calcula como la diferencia entre lo que consumís hoy y esa línea de base.
+      <ul>
+        <li><strong>Valor de la línea de base</strong>: el valor histórico del <em>indicador</em> (no del consumo total).
+            Si antes gastabas 145 kWh por cada tonelada, acá va <code>145</code>.
+            Conviene sacarlo del promedio de los últimos 3–6 meses previos al proyecto.</li>
+        <li><strong>Costo unitario</strong>: cuánto cuesta <em>una unidad de lo que medís en el numerador</em>.
+            Si el indicador está en kWh/ton, va el precio del kWh (ej: <code>120</code> $/kWh).
+            Si está en kg/ton de merma, va el precio del kg de fibra.</li>
+        <li><strong>Sentido de la mejora</strong>: si bajar el indicador es bueno (consumos, mermas), dejá
+            la primera opción. Si <em>subir</em> es bueno (rendimiento, OEE), elegí la segunda.</li>
+      </ul>
+    </div>
     <div class="row-3">
-      <div><label>Valor del indicador ANTES de la mejora</label><input type="number" step="any" id="valor_base_indicador" required></div>
-      <div><label>Costo unitario ($ por unidad del indicador)</label><input type="number" step="any" id="costo_unitario" required></div>
-      <div><label>Unidad del costo</label><input type="text" id="unidad_costo" placeholder="Ej: $/kWh"></div>
+      <div>
+        <label>Valor del indicador ANTES de la mejora</label>
+        <input type="number" step="any" id="valor_base_indicador" required placeholder="Ej: 145">
+      </div>
+      <div>
+        <label>Costo por unidad del indicador ($)</label>
+        <input type="number" step="any" id="costo_unitario" required placeholder="Ej: 120">
+      </div>
+      <div>
+        <label>Unidad del costo</label>
+        <input type="text" id="unidad_costo" placeholder="Ej: $/kWh">
+      </div>
     </div>
     <div>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:400">
-        <input type="checkbox" id="menor_es_mejor" checked style="width:auto">
-        Un indicador MÁS BAJO representa ahorro (ej: consumo, merma). Desmarcar si es al revés (ej: rendimiento, OEE).
-      </label>
+      <label>Sentido de la mejora</label>
+      <select id="menor_es_mejor">
+        <option value="true" selected>Un indicador MÁS BAJO es mejor (consumo, merma, energía, químicos)</option>
+        <option value="false">Un indicador MÁS ALTO es mejor (rendimiento, OEE, disponibilidad)</option>
+      </select>
     </div>
 
-    <button type="submit">Crear proyecto</button>
+    <h3 class="section-title">6. Verificá el cálculo antes de guardar</h3>
+    <div class="ayuda">
+      Escribí valores de prueba (los de una semana típica) y comprobá que el resultado tenga sentido.
+      Si acá aparece un número raro, algo está mal configurado más arriba.
+    </div>
+    <div id="preview-inputs" class="row-3"></div>
+    <div id="preview-resultado" class="preview-box">Completá las variables, la fórmula y la línea de base para ver la simulación.</div>
+
+    <button type="submit" id="btn-guardar">Crear proyecto</button>
   </form>
 </main>
 
@@ -96,6 +178,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/formula.js"></script>
 <script src="js/nuevo.js"></script>
 </body>
 </html>

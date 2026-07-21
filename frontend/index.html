@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seguimiento de Ahorros - Papelera del Sur</title>
 <link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 <header class="topbar">
@@ -12,6 +13,7 @@
   <nav>
     <a href="index.html">Dashboard</a>
     <a href="nuevo.html">+ Nuevo Proyecto</a>
+    <a href="arbol.html">Árbol de Pérdidas</a>
     <a href="ideas.html">Banco de Ideas</a>
   </nav>
 </header>
@@ -19,8 +21,22 @@
 <main class="container">
   <h1>Seguimiento de Proyectos de Ahorro</h1>
 
-  <div class="kpi-row" id="kpi-row">
-    <div class="kpi"><div class="kpi-label">Cargando…</div></div>
+  <div class="kpi-row" id="kpi-row"><div class="kpi"><div class="kpi-label">Cargando…</div></div></div>
+
+  <div id="alertas"></div>
+
+  <div class="card">
+    <h3>Evolución consolidada de todos los proyectos</h3>
+    <div class="tabs">
+      <button class="tab-btn active" data-vista="mensual">Ahorro mensual por proyecto</button>
+      <button class="tab-btn" data-vista="acumulado">Acumulado vs objetivo</button>
+    </div>
+    <canvas id="grafico-consolidado" height="110"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Impacto por línea del P&amp;L</h3>
+    <canvas id="grafico-pnl" height="90"></canvas>
   </div>
 
   <h2 class="section-title">Proyectos</h2>

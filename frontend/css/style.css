@@ -173,3 +173,79 @@ th { color: #6b7862; font-weight: 600; font-size: 0.76rem; text-transform: upper
 .tab-btn.active { background: var(--verde); color: white; }
 .hint { font-size: 0.78rem; color: #7c8a72; margin-top: -4px; }
 .section-title { margin-top: 30px; }
+
+/* ================= v2: semáforos, ayudas, árbol, edición ================= */
+.semaforo { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+.semaforo-verde { background:#4f9d3a; }
+.semaforo-amarillo { background:#d9a520; }
+.semaforo-rojo { background:#c0392b; }
+.semaforo-sin_datos { background:#b7bfb0; }
+
+.ayuda {
+  background:#f0f5ec; border-left:4px solid var(--verde);
+  padding:12px 14px; border-radius:8px; font-size:0.85rem; margin:6px 0 14px;
+  color:#3f4d36; line-height:1.55;
+}
+.ayuda strong { color: var(--verde-mas-oscuro); }
+.ayuda code {
+  background:#dfe8d7; padding:1px 5px; border-radius:4px;
+  font-family:ui-monospace,Menlo,Consolas,monospace; font-size:0.92em;
+}
+.ayuda ul { margin:6px 0 0; padding-left:18px; }
+.ayuda li { margin-bottom:3px; }
+
+.preview-box {
+  background:#fff8e6; border:1px dashed var(--amarillo);
+  border-radius:8px; padding:12px 14px; font-size:0.86rem; margin-top:10px;
+}
+.preview-box .preview-linea { margin:3px 0; }
+.preview-box .resultado-ahorro { font-weight:700; font-size:1.05rem; }
+
+details.acordeon { margin-bottom:12px; }
+details.acordeon > summary {
+  cursor:pointer; font-weight:600; color:var(--verde-mas-oscuro);
+  padding:8px 0; font-size:0.9rem; list-style:none;
+}
+details.acordeon > summary::before { content:"▸ "; }
+details.acordeon[open] > summary::before { content:"▾ "; }
+
+.filtros-bar {
+  display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;
+  background:#f0f5ec; padding:12px; border-radius:8px; margin-bottom:14px;
+}
+.filtros-bar > div { flex:1; min-width:130px; }
+.filtros-bar label { font-size:0.76rem; }
+
+.tabla-editable input {
+  padding:4px 6px; font-size:0.82rem; border:1px solid #cfd8c6; border-radius:5px;
+}
+tr.editando { background:#fff8e6; }
+
+/* Árbol de pérdidas */
+.rama {
+  background:white; border-radius:12px; padding:16px 18px;
+  box-shadow:var(--card-shadow); margin-bottom:14px;
+  border-top:5px solid var(--verde);
+}
+.rama-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.rama-total { text-align:right; font-size:0.85rem; }
+.rama-total .monto { font-size:1.25rem; font-weight:700; color:var(--verde-mas-oscuro); }
+.hoja {
+  border-left:3px solid #dfe6d8; padding:8px 0 8px 14px; margin-top:10px;
+}
+.hoja.con-proyectos { border-left-color:var(--verde); }
+.hoja-nombre { font-weight:600; font-size:0.92rem; }
+.hoja-desc { font-size:0.78rem; color:#7c8a72; }
+.hoja-proyecto {
+  background:#f7faf4; border-radius:7px; padding:7px 10px; margin-top:6px;
+  font-size:0.83rem; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+}
+.chip {
+  display:inline-block; background:#e3ebdc; color:#3f4d36;
+  border-radius:12px; padding:2px 9px; font-size:0.72rem; margin-right:5px;
+}
+.modo-slide .rama { page-break-inside:avoid; }
+@media print {
+  .topbar, .footer, .no-print { display:none !important; }
+  body { background:white; }
+}
