@@ -53,6 +53,7 @@ async function render() {
               .map((e) => `<option value="${e}" ${e === P.estado ? "selected" : ""}>${e.replace(/_/g, " ")}</option>`).join("")}
           </select>
           <a class="btn btn-small btn-secundario" href="nuevo.html?editar=${P.id}">✎ Editar proyecto</a>
+          <button class="btn btn-small btn-secundario" style="color:#c0392b" onclick="eliminarProyectoActual()">🗑 Eliminar proyecto</button>
         </div>
       </div>
 
@@ -304,6 +305,16 @@ async function cargarRegistro(ev) {
     setTimeout(render, 900);
   } catch (e) {
     flash.innerHTML = `<div class="flash flash-danger">${e.message}</div>`;
+  }
+}
+
+async function eliminarProyectoActual() {
+  if (!confirm(`¿Eliminar "${P.nombre}"? Esto borra también todas sus mediciones cargadas (${P.registros.length}). No se puede deshacer.`)) return;
+  try {
+    await apiPost({ action: "eliminar_proyecto", proyecto_id: proyectoId });
+    window.location.href = "index.html";
+  } catch (e) {
+    alert("Error al eliminar: " + e.message);
   }
 }
 

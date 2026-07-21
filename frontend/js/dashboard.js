@@ -101,6 +101,7 @@ function renderLista(d) {
           <div style="margin-top:8px;display:flex;gap:6px;justify-content:flex-end">
             <a class="btn btn-small btn-secundario" href="nuevo.html?editar=${p.id}">Editar</a>
             <a class="btn btn-small" href="proyecto.html?id=${p.id}">Abrir</a>
+            <button class="btn btn-small btn-secundario" style="color:#c0392b" onclick="eliminarProyectoDashboard(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')">Eliminar</button>
           </div>
         </div>
       </div>`;
@@ -175,6 +176,16 @@ function renderPnl(d) {
       scales: { x: { beginAtZero: true } },
     },
   });
+}
+
+async function eliminarProyectoDashboard(id, nombre) {
+  if (!confirm(`¿Eliminar "${nombre}"? Esto borra también todas sus mediciones cargadas. No se puede deshacer.`)) return;
+  try {
+    await apiPost({ action: "eliminar_proyecto", proyecto_id: id });
+    cargarDashboard();
+  } catch (e) {
+    alert("Error al eliminar: " + e.message);
+  }
 }
 
 cargarDashboard();

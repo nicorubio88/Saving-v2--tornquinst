@@ -25,5 +25,5 @@ async function apiPost(body) {
 }
 
 function fmtMoney(n) {
-  return "$ " + Math.round(n || 0).toLocaleString("es-AR");
+  return "US$ " + Math.round(n || 0).toLocaleString("es-AR");
 }
