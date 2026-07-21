@@ -43,8 +43,13 @@
       se acumula de forma más o menos pareja durante el año. Elegí <strong>"Monto fijo por mes"</strong>
       cuando el objetivo es en realidad mensual y constante — típico de una <em>sustitución de insumo</em>:
       por ejemplo, "sustituir siempre 200 ton/mes de fibra corta por una más barata", sin importar si
-      algunas semanas se sustituye más rápido y otras más lento. En ese caso el objetivo de cada mes
-      es siempre el mismo, en vez de repartir un total anual en 12 partes iguales.
+      algunas semanas se sustituye más rápido y otras más lento.
+      <br><br>
+      Elegí <strong>"Dinámico (según producción real)"</strong> cuando el ahorro esperado depende de un
+      volumen que NO es constante mes a mes — por ejemplo, viajes de transporte: el objetivo de cada
+      mes sale de <code>$ objetivo por tonelada × toneladas realmente despachadas ese mes</code>. Si un
+      mes se despacha poco, el objetivo de ese mes baja solo; si se despacha mucho, sube solo. No hay
+      que reestimarlo cada vez.
     </div>
     <div class="row-2">
       <div>
@@ -52,16 +57,22 @@
         <select id="tipo_objetivo">
           <option value="anual" selected>Total para los 12 meses</option>
           <option value="mensual">Monto fijo por mes (constante)</option>
+          <option value="dinamico">Dinámico (según producción real)</option>
         </select>
       </div>
       <div id="campo-objetivo-anual">
-        <label>Objetivo de ahorro para los 12 meses ($)</label>
-        <input type="number" step="any" id="objetivo_valor" required>
+        <label id="label-objetivo-anual">Objetivo de ahorro para los 12 meses ($)</label>
+        <input type="number" step="any" id="objetivo_valor">
       </div>
       <div id="campo-objetivo-mensual" style="display:none">
         <label>Objetivo de ahorro FIJO por mes ($)</label>
         <input type="number" step="any" id="objetivo_mensual" placeholder="Ej: 200 ton × $60.000/ton = 12.000.000">
         <div class="hint">Equivalente anual: <strong id="equivalente-anual">-</strong> (informativo, se calcula solo)</div>
+      </div>
+      <div id="campo-objetivo-dinamico" style="display:none">
+        <label>Objetivo de ahorro POR UNIDAD de volumen ($)</label>
+        <input type="number" step="any" id="objetivo_unitario" placeholder="Ej: $300 de ahorro objetivo por tonelada despachada">
+        <div class="hint">Se multiplica por la variable de volumen (punto 4) de cada carga real.</div>
       </div>
     </div>
     <div><label>Objetivo en palabras</label><input type="text" id="objetivo_descripcion" placeholder="Ej: Sustituir 200 ton/mes de fibra corta por fibra alternativa"></div>
@@ -107,6 +118,11 @@
       con un volumen mensual fijo repartido de forma pareja o dispareja en el mes): una única
       variable <code>ton_sustituidas</code> (toneladas del insumo nuevo que reemplazaron al viejo
       en ese período). Acá NO hace falta variable de volumen — ver el punto 4.
+      <br><br>
+      <em>Ejemplo de reducción de viajes de transporte</em> (menos camiones por tonelada enviada,
+      ej. camiones más grandes): dos variables, <code>ton</code> (toneladas enviadas en el período)
+      y <code>viajes</code> (viajes reales realizados). El indicador es <code>viajes / ton</code>
+      — ver el ejemplo completo con números en el punto 5.
     </div>
     <div id="variables-container">
       <div class="var-row">
@@ -131,6 +147,7 @@
         <li>Energía: <code>kw / ton</code> → kWh por tonelada.</li>
         <li>Merma: <code>merma / ton</code> → kg de merma por tonelada.</li>
         <li>Químicos: <code>kg_quimico / ton</code> → kg de químico por tonelada.</li>
+        <li>Transporte: <code>viajes / ton</code> → viajes por tonelada enviada.</li>
       </ul>
       <strong>Pero si tu proyecto es una sustitución de volumen</strong> (como el ejemplo de la
       fibra), el indicador es directamente la cantidad sustituida — <strong>sin dividir por
@@ -177,6 +194,14 @@
       línea de base = <code>0</code> (antes del proyecto, 0 toneladas se sustituían), costo unitario
       = la <em>diferencia de precio por tonelada</em> entre el insumo viejo y el nuevo, y sentido de
       la mejora = "más alto es mejor" (más toneladas sustituidas = más ahorro).
+      <br><br>
+      <strong>Para el caso de reducción de viajes de transporte</strong> (fórmula = <code>viajes / ton</code>):
+      línea de base = <code>1 / capacidad_del_camión_viejo</code>. Ejemplo: si el camión viejo cargaba
+      20 toneladas por viaje, la base es <code>1/20 = 0.05</code> viajes por tonelada. Costo unitario
+      = el costo de un viaje en $. Cada vez que cargues <code>ton</code> (toneladas enviadas) y
+      <code>viajes</code> (viajes reales de esa semana), la app calcula solos los "viajes que se
+      hubieran necesitado con el camión viejo" y te da el ahorro en pesos — sin que tengas que
+      calcularlo vos a mano.
     </div>
     <div class="row-3">
       <div>
@@ -216,6 +241,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/api.js"></script>
+<script src="js/common.js"></script>
 <script src="js/formula.js"></script>
 <script src="js/nuevo.js"></script>
 </body>
