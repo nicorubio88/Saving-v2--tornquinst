@@ -35,6 +35,20 @@ function leerVariables() {
     .filter((v) => v.nombre);
 }
 
+// ------------------------------------------------ tipo de objetivo (anual / mensual)
+function actualizarTipoObjetivo() {
+  const tipo = document.getElementById("tipo_objetivo").value;
+  document.getElementById("campo-objetivo-anual").style.display = tipo === "anual" ? "" : "none";
+  document.getElementById("campo-objetivo-mensual").style.display = tipo === "mensual" ? "" : "none";
+  document.getElementById("objetivo_valor").required = tipo === "anual";
+  actualizarEquivalenteAnual();
+}
+
+function actualizarEquivalenteAnual() {
+  const mensual = parseFloat(document.getElementById("objetivo_mensual").value);
+  document.getElementById("equivalente-anual").textContent = isNaN(mensual) ? "-" : fmtMoney(mensual * 12);
+}
+
 // ------------------------------------------------ vista previa en vivo
 function actualizarPreview() {
   const variables = leerVariables();
@@ -139,8 +153,11 @@ window.addEventListener("DOMContentLoaded", async () => {
    "variable_volumen", "menor_es_mejor", "unidad_indicador"]
     .forEach((id) => document.getElementById(id).addEventListener("input", calcularPreview));
   document.getElementById("menor_es_mejor").addEventListener("change", calcularPreview);
+  document.getElementById("tipo_objetivo").addEventListener("change", actualizarTipoObjetivo);
+  document.getElementById("objetivo_mensual").addEventListener("input", actualizarEquivalenteAnual);
   engancharPreview();
   actualizarPreview();
+  actualizarTipoObjetivo();
 
   try { await cargarCatalogos(); } catch (e) { mostrarFlash("No se pudieron cargar los catálogos: " + e.message, "danger"); }
 
@@ -173,6 +190,9 @@ async function cargarProyectoParaEditar(id) {
     document.getElementById("fecha_inicio").value = p.fecha_inicio || "";
     document.getElementById("objetivo_valor").value = p.objetivo_valor || "";
     document.getElementById("objetivo_descripcion").value = p.objetivo_descripcion || "";
+    document.getElementById("tipo_objetivo").value = p.tipo_objetivo || "anual";
+    document.getElementById("objetivo_mensual").value = p.objetivo_mensual || "";
+    actualizarTipoObjetivo();
     document.getElementById("categoria_perdida").value = p.categoria_perdida || "";
     document.getElementById("linea_pnl").value = p.linea_pnl || "";
     document.getElementById("tipo_impacto").value = p.tipo_impacto || "";
@@ -208,14 +228,26 @@ document.getElementById("form-proyecto").addEventListener("submit", async (ev) =
     const variables = leerVariables();
     if (variables.length === 0) throw new Error("Definí al menos una variable.");
 
+    const tipoObjetivo = document.getElementById("tipo_objetivo").value;
+    if (tipoObjetivo === "anual" && !document.getElementById("objetivo_valor").value) {
+      throw new Error("Completá el objetivo de ahorro para los 12 meses.");
+    }
+    if (tipoObjetivo === "mensual" && !document.getElementById("objetivo_mensual").value) {
+      throw new Error("Completá el objetivo de ahorro mensual.");
+    }
+
     const datos = {
       nombre: document.getElementById("nombre").value,
       descripcion: document.getElementById("descripcion").value,
       area: document.getElementById("area").value,
       responsable: document.getElementById("responsable").value,
       fecha_inicio: document.getElementById("fecha_inicio").value,
-      objetivo_valor: parseFloat(document.getElementById("objetivo_valor").value),
+      objetivo_valor: tipoObjetivo === "mensual"
+        ? (parseFloat(document.getElementById("objetivo_mensual").value) || 0) * 12
+        : parseFloat(document.getElementById("objetivo_valor").value),
       objetivo_descripcion: document.getElementById("objetivo_descripcion").value,
+      tipo_objetivo: tipoObjetivo,
+      objetivo_mensual: tipoObjetivo === "mensual" ? parseFloat(document.getElementById("objetivo_mensual").value) : null,
       categoria_perdida: document.getElementById("categoria_perdida").value,
       linea_pnl: document.getElementById("linea_pnl").value,
       tipo_impacto: document.getElementById("tipo_impacto").value,

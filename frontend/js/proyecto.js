@@ -43,6 +43,9 @@ async function render() {
             <span class="chip">${P.linea_pnl_nombre}</span>
             ${P.contramedida ? `<span class="chip">${P.contramedida}</span>` : ""}
           </div>
+          ${P.tipo_objetivo === "mensual"
+            ? `<div class="hint">Objetivo mensual fijo: <strong>${fmtMoney(P.objetivo_mensual)}</strong>/mes (constante, no se reparte el anual en 12 partes iguales)</div>`
+            : ""}
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
           <select id="select-estado">
