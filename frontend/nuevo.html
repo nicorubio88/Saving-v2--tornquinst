@@ -28,20 +28,43 @@
     <h3>1. Datos generales</h3>
     <div class="row-2">
       <div><label>Nombre del proyecto</label><input type="text" id="nombre" required></div>
-      <div><label>Área / Sector</label><input type="text" id="area" placeholder="Ej: Preparación de pasta"></div>
+      <div>
+        <label>Área / Sector</label><input type="text" id="area" placeholder="Ej: Preparación de pasta">
+      </div>
     </div>
     <div><label>Descripción de la mejora</label><textarea id="descripcion" rows="2"></textarea></div>
     <div class="row-2">
       <div><label>Responsable</label><input type="text" id="responsable" required></div>
       <div><label>Fecha de inicio</label><input type="date" id="fecha_inicio" required></div>
     </div>
+
+    <div class="ayuda">
+      <strong>¿Cómo querés definir el objetivo?</strong> Elegí "Total para los 12 meses" si el ahorro
+      se acumula de forma más o menos pareja durante el año. Elegí <strong>"Monto fijo por mes"</strong>
+      cuando el objetivo es en realidad mensual y constante — típico de una <em>sustitución de insumo</em>:
+      por ejemplo, "sustituir siempre 200 ton/mes de fibra corta por una más barata", sin importar si
+      algunas semanas se sustituye más rápido y otras más lento. En ese caso el objetivo de cada mes
+      es siempre el mismo, en vez de repartir un total anual en 12 partes iguales.
+    </div>
     <div class="row-2">
       <div>
+        <label>Tipo de objetivo</label>
+        <select id="tipo_objetivo">
+          <option value="anual" selected>Total para los 12 meses</option>
+          <option value="mensual">Monto fijo por mes (constante)</option>
+        </select>
+      </div>
+      <div id="campo-objetivo-anual">
         <label>Objetivo de ahorro para los 12 meses ($)</label>
         <input type="number" step="any" id="objetivo_valor" required>
       </div>
-      <div><label>Objetivo en palabras</label><input type="text" id="objetivo_descripcion" placeholder="Ej: Reducir consumo específico 8%"></div>
+      <div id="campo-objetivo-mensual" style="display:none">
+        <label>Objetivo de ahorro FIJO por mes ($)</label>
+        <input type="number" step="any" id="objetivo_mensual" placeholder="Ej: 200 ton × $60.000/ton = 12.000.000">
+        <div class="hint">Equivalente anual: <strong id="equivalente-anual">-</strong> (informativo, se calcula solo)</div>
+      </div>
     </div>
+    <div><label>Objetivo en palabras</label><input type="text" id="objetivo_descripcion" placeholder="Ej: Sustituir 200 ton/mes de fibra corta por fibra alternativa"></div>
 
     <h3 class="section-title">2. Impacto en la estructura de costos</h3>
     <div class="ayuda">
@@ -79,6 +102,11 @@
       </ul>
       <em>Ejemplo típico de energía:</em> una variable <code>kw</code> (kWh consumidos en la semana)
       y otra <code>ton</code> (toneladas producidas en esa misma semana).
+      <br><br>
+      <em>Ejemplo de sustitución de insumo</em> (ej: reemplazar fibra corta por una más barata,
+      con un volumen mensual fijo repartido de forma pareja o dispareja en el mes): una única
+      variable <code>ton_sustituidas</code> (toneladas del insumo nuevo que reemplazaron al viejo
+      en ese período). Acá NO hace falta variable de volumen — ver el punto 4.
     </div>
     <div id="variables-container">
       <div class="var-row">
@@ -98,16 +126,21 @@
 
     <h3 class="section-title">4. ¿Cómo se calcula el indicador?</h3>
     <div class="ayuda">
-      El <strong>indicador</strong> es el número que mide la eficiencia del proceso, normalmente
-      <em>consumo por unidad producida</em>. Se escribe como una cuenta usando los nombres cortos de arriba.
+      El <strong>indicador</strong> normalmente mide <em>consumo por unidad producida</em>:
       <ul>
         <li>Energía: <code>kw / ton</code> → kWh por tonelada.</li>
         <li>Merma: <code>merma / ton</code> → kg de merma por tonelada.</li>
         <li>Químicos: <code>kg_quimico / ton</code> → kg de químico por tonelada.</li>
       </ul>
-      <strong>Variable de volumen:</strong> es la que representa <em>cuánto produjiste</em> en ese período
-      (casi siempre <code>ton</code>). Se usa para convertir el ahorro por tonelada en el ahorro
-      total en pesos del período. Si la dejás vacía, el ahorro no se multiplica por volumen.
+      <strong>Pero si tu proyecto es una sustitución de volumen</strong> (como el ejemplo de la
+      fibra), el indicador es directamente la cantidad sustituida — <strong>sin dividir por
+      nada</strong>: fórmula = <code>ton_sustituidas</code> (el mismo nombre de la variable, tal
+      cual). En ese caso dejá la <strong>variable de volumen vacía</strong>: el propio dato cargado
+      ya representa el volumen del período, no hay que multiplicarlo por nada más.
+      <br><br>
+      <strong>Variable de volumen</strong> (cuando SÍ aplica): es la que representa <em>cuánto
+      produjiste</em> en el período (casi siempre <code>ton</code>). Convierte el ahorro "por
+      unidad" en el ahorro total en pesos de ese período.
     </div>
     <div class="row-2">
       <div>
@@ -137,8 +170,13 @@
             Si el indicador está en kWh/ton, va el precio del kWh (ej: <code>120</code> $/kWh).
             Si está en kg/ton de merma, va el precio del kg de fibra.</li>
         <li><strong>Sentido de la mejora</strong>: si bajar el indicador es bueno (consumos, mermas), dejá
-            la primera opción. Si <em>subir</em> es bueno (rendimiento, OEE), elegí la segunda.</li>
+            la primera opción. Si <em>subir</em> es bueno (rendimiento, OEE, o toneladas sustituidas
+            en un reemplazo de insumo), elegí la segunda.</li>
       </ul>
+      <strong>Para el caso de sustitución de insumo</strong> (fórmula = <code>ton_sustituidas</code>):
+      línea de base = <code>0</code> (antes del proyecto, 0 toneladas se sustituían), costo unitario
+      = la <em>diferencia de precio por tonelada</em> entre el insumo viejo y el nuevo, y sentido de
+      la mejora = "más alto es mejor" (más toneladas sustituidas = más ahorro).
     </div>
     <div class="row-3">
       <div>
