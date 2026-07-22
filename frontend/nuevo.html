@@ -50,6 +50,13 @@
       mes sale de <code>$ objetivo por tonelada × toneladas realmente despachadas ese mes</code>. Si un
       mes se despacha poco, el objetivo de ese mes baja solo; si se despacha mucho, sube solo. No hay
       que reestimarlo cada vez.
+      <br><br>
+      Dentro de "Dinámico" hay 2 formas de definir el $/unidad objetivo — elegí
+      <strong>"Nivel objetivo del indicador"</strong> cuando medís algo como eficiencia energética
+      (kWh/ton): ahí vos controlás el <em>nivel de eficiencia</em> que querés lograr, pero NO controlás
+      el precio de la energía. Con este modo, cargás el nivel que querés alcanzar (ej: bajar de 145 a
+      130 kWh/ton) y la app deriva sola el $/ton usando el costo vigente — si el costo del insumo sube
+      o baja más adelante, el objetivo en $ se actualiza solo, en la misma base que el ahorro real.
     </div>
     <div class="row-2">
       <div>
@@ -70,9 +77,30 @@
         <div class="hint">Equivalente anual: <strong id="equivalente-anual">-</strong> (informativo, se calcula solo)</div>
       </div>
       <div id="campo-objetivo-dinamico" style="display:none">
-        <label>Objetivo de ahorro POR UNIDAD de volumen ($)</label>
-        <input type="number" step="any" id="objetivo_unitario" placeholder="Ej: $300 de ahorro objetivo por tonelada despachada">
-        <div class="hint">Se multiplica por la variable de volumen (punto 4) de cada carga real.</div>
+        <label>¿Cómo definís el $/unidad objetivo?</label>
+        <select id="modo_objetivo_dinamico">
+          <option value="monto_directo">Monto directo por unidad de volumen ($)</option>
+          <option value="nivel_indicador">Nivel objetivo del indicador (recomendado si el costo puede variar)</option>
+        </select>
+
+        <div id="sub-campo-monto-directo" style="margin-top:10px">
+          <label>Objetivo de ahorro POR UNIDAD de volumen ($)</label>
+          <input type="number" step="any" id="objetivo_unitario" placeholder="Ej: $300 de ahorro objetivo por tonelada despachada">
+          <div class="hint">Se multiplica por la variable de volumen (punto 4) de cada carga real.</div>
+        </div>
+
+        <div id="sub-campo-nivel-indicador" style="display:none;margin-top:10px">
+          <label>Valor OBJETIVO del indicador a lograr</label>
+          <input type="number" step="any" id="valor_objetivo_indicador" placeholder="Ej: 130 (si la línea de base del punto 5 es 145)">
+          <div class="hint">
+            Misma unidad que la línea de base del punto 5. El $/unidad se deriva sola de
+            <code>(base − objetivo) × costo</code> usando los valores del punto 5 — si más
+            adelante cambiás el costo, se vuelve a derivar automáticamente.
+          </div>
+          <div class="preview-box" style="margin-top:8px">
+            $/unidad objetivo derivado ahora mismo: <strong id="tasa-objetivo-derivada">completá la línea de base, el costo y este valor</strong>
+          </div>
+        </div>
       </div>
     </div>
     <div><label>Objetivo en palabras</label><input type="text" id="objetivo_descripcion" placeholder="Ej: Sustituir 200 ton/mes de fibra corta por fibra alternativa"></div>
