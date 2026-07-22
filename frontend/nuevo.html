@@ -212,12 +212,21 @@
             Si antes gastabas 145 kWh por cada tonelada, acá va <code>145</code>.
             Conviene sacarlo del promedio de los últimos 3–6 meses previos al proyecto.</li>
         <li><strong>Costo unitario</strong>: cuánto cuesta <em>una unidad de lo que medís en el numerador</em>.
-            Si el indicador está en kWh/ton, va el precio del kWh (ej: <code>120</code> $/kWh).
-            Si está en kg/ton de merma, va el precio del kg de fibra.</li>
+            Si el indicador está en kWh/ton, va el precio del kWh. Si está en kg/ton de merma, va el
+            precio del kg de fibra.</li>
         <li><strong>Sentido de la mejora</strong>: si bajar el indicador es bueno (consumos, mermas), dejá
             la primera opción. Si <em>subir</em> es bueno (rendimiento, OEE, o toneladas sustituidas
             en un reemplazo de insumo), elegí la segunda.</li>
       </ul>
+      <strong>¿Costo fijo o variable?</strong> Si el precio del insumo se mantiene estable, usá "Monto
+      fijo". Pero si el precio <em>cambia mes a mes</em> (gas, energía, un químico con precio dolarizado)
+      y vos medís <em>eficiencia física</em> (m3/ton, kWh/ton) — no plata — usá <strong>"Variable declarada
+      arriba"</strong>: agregá una variable extra en el punto 3 (ej. <code>precio_gas</code>) que cargues
+      cada período junto con los demás datos, y elegila acá. Así cada mes queda valuado a SU PROPIO
+      precio real — si editás el costo de un proyecto con monto fijo, se recalcula TODO el histórico con
+      el precio de hoy, distorsionando meses anteriores; con costo variable eso no pasa, porque cada
+      período ya tiene su propio precio guardado.
+      <br><br>
       <strong>Para el caso de sustitución de insumo</strong> (fórmula = <code>ton_sustituidas</code>):
       línea de base = <code>0</code> (antes del proyecto, 0 toneladas se sustituían), costo unitario
       = la <em>diferencia de precio por tonelada</em> entre el insumo viejo y el nuevo, y sentido de
@@ -231,18 +240,38 @@
       hubieran necesitado con el camión viejo" y te da el ahorro en pesos — sin que tengas que
       calcularlo vos a mano.
     </div>
-    <div class="row-3">
+    <div class="row-2">
       <div>
         <label>Valor del indicador ANTES de la mejora</label>
         <input type="number" step="any" id="valor_base_indicador" required placeholder="Ej: 145">
       </div>
       <div>
+        <label>¿Costo fijo o variable?</label>
+        <select id="costo_unitario_modo">
+          <option value="fijo" selected>Monto fijo ($)</option>
+          <option value="variable">Variable declarada arriba (se carga cada período)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row-3" id="fila-costo-fijo">
+      <div>
         <label>Costo por unidad del indicador ($)</label>
-        <input type="number" step="any" id="costo_unitario" required placeholder="Ej: 120">
+        <input type="number" step="any" id="costo_unitario" placeholder="Ej: 120">
       </div>
       <div>
         <label>Unidad del costo</label>
         <input type="text" id="unidad_costo" placeholder="Ej: $/kWh">
+      </div>
+    </div>
+    <div class="row-2" id="fila-costo-variable" style="display:none">
+      <div>
+        <label>¿Cuál de las variables declaradas es el precio?</label>
+        <select id="costo_unitario_variable"><option value="">— Declará variables en el punto 3 —</option></select>
+        <div class="hint">Se va a pedir cada vez que cargues una medición, junto con las demás variables.</div>
+      </div>
+      <div>
+        <label>Unidad del costo</label>
+        <input type="text" id="unidad_costo" placeholder="Ej: USD/m3">
       </div>
     </div>
     <div>
