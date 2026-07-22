@@ -25,6 +25,15 @@ function notaObjetivo(p) {
     return `<div class="hint">📌 Objetivo mensual fijo: <strong>${fmtMoney(p.objetivo_mensual)}</strong>/mes
       (constante, no se reparte el anual en 12 partes iguales)</div>`;
   }
+  if (p.tipo_objetivo === "dinamico" && p.modo_objetivo_dinamico === "nivel_indicador") {
+    const diferencia = p.menor_es_mejor
+      ? (p.valor_base_indicador - p.valor_objetivo_indicador)
+      : (p.valor_objetivo_indicador - p.valor_base_indicador);
+    const tasa = diferencia * (p.costo_unitario || 0);
+    return `<div class="hint">📌 Objetivo dinámico por nivel de indicador: alcanzar <strong>${fmtNumero(p.valor_objetivo_indicador, 2)} ${p.unidad_indicador || ""}</strong>
+      (base: ${fmtNumero(p.valor_base_indicador, 2)}) → <strong>US$ ${tasa.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong> por unidad de ${p.variable_volumen || "volumen"} al costo vigente.
+      Si cambia el costo del proyecto, este número se actualiza solo.</div>`;
+  }
   if (p.tipo_objetivo === "dinamico") {
     return `<div class="hint">📌 Objetivo dinámico: <strong>${fmtMoney(p.objetivo_unitario)}</strong> por unidad de
       ${p.variable_volumen || "volumen"} (se recalcula solo según la producción real de cada período)</div>`;

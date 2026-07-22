@@ -35,18 +35,55 @@ function leerVariables() {
     .filter((v) => v.nombre);
 }
 
-// ------------------------------------------------ tipo de objetivo (anual / mensual)
+// ------------------------------------------------ tipo de objetivo (anual / mensual / dinámico)
 function actualizarTipoObjetivo() {
   const tipo = document.getElementById("tipo_objetivo").value;
-  document.getElementById("campo-objetivo-anual").style.display = tipo === "anual" ? "" : "none";
+  document.getElementById("campo-objetivo-anual").style.display = tipo === "mensual" ? "none" : "";
   document.getElementById("campo-objetivo-mensual").style.display = tipo === "mensual" ? "" : "none";
+  document.getElementById("campo-objetivo-dinamico").style.display = tipo === "dinamico" ? "" : "none";
   document.getElementById("objetivo_valor").required = tipo === "anual";
+  document.getElementById("label-objetivo-anual").textContent = tipo === "dinamico"
+    ? "Objetivo total de referencia para los 12 meses ($) — opcional, informativo"
+    : "Objetivo de ahorro para los 12 meses ($)";
   actualizarEquivalenteAnual();
 }
 
 function actualizarEquivalenteAnual() {
   const mensual = parseFloat(document.getElementById("objetivo_mensual").value);
   document.getElementById("equivalente-anual").textContent = isNaN(mensual) ? "-" : fmtMoney(mensual * 12);
+}
+
+// ------------------------------------------------ sub-modo del objetivo dinámico
+function actualizarModoObjetivoDinamico() {
+  const modo = document.getElementById("modo_objetivo_dinamico").value;
+  document.getElementById("sub-campo-monto-directo").style.display = modo === "monto_directo" ? "" : "none";
+  document.getElementById("sub-campo-nivel-indicador").style.display = modo === "nivel_indicador" ? "" : "none";
+  actualizarTasaObjetivoDerivada();
+}
+
+/**
+ * Vista previa en vivo del $/unidad derivado en modo "nivel_indicador":
+ * (base − objetivo) × costo. Usa los mismos campos de la sección 5 (línea de
+ * base y costo), así que se recalcula cada vez que se toca cualquiera de
+ * esos campos, no solo el propio valor_objetivo_indicador.
+ */
+function actualizarTasaObjetivoDerivada() {
+  const el = document.getElementById("tasa-objetivo-derivada");
+  if (!el) return;
+  const base = parseFloat(document.getElementById("valor_base_indicador").value);
+  const objetivo = parseFloat(document.getElementById("valor_objetivo_indicador").value);
+  const costo = parseFloat(document.getElementById("costo_unitario").value);
+  const menorEsMejor = document.getElementById("menor_es_mejor").value === "true";
+  const unidadCosto = document.getElementById("unidad_costo").value || "$";
+
+  if (isNaN(base) || isNaN(objetivo) || isNaN(costo)) {
+    el.textContent = "completá la línea de base, el costo y este valor";
+    return;
+  }
+  const diferencia = menorEsMejor ? (base - objetivo) : (objetivo - base);
+  const tasa = diferencia * costo;
+  const tasaFormateada = "US$ " + tasa.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  el.textContent = `${tasaFormateada} por unidad de volumen${diferencia < 0 ? " ⚠️ (negativo: el objetivo es peor que la base, revisá el sentido de la mejora)" : ""}`;
 }
 
 // ------------------------------------------------ vista previa en vivo
@@ -155,9 +192,18 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("menor_es_mejor").addEventListener("change", calcularPreview);
   document.getElementById("tipo_objetivo").addEventListener("change", actualizarTipoObjetivo);
   document.getElementById("objetivo_mensual").addEventListener("input", actualizarEquivalenteAnual);
+
+  document.getElementById("modo_objetivo_dinamico").addEventListener("change", actualizarModoObjetivoDinamico);
+  document.getElementById("valor_objetivo_indicador").addEventListener("input", actualizarTasaObjetivoDerivada);
+  // La tasa derivada también depende de estos 4 campos, que viven en la sección 5:
+  ["valor_base_indicador", "costo_unitario", "unidad_costo"]
+    .forEach((id) => document.getElementById(id).addEventListener("input", actualizarTasaObjetivoDerivada));
+  document.getElementById("menor_es_mejor").addEventListener("change", actualizarTasaObjetivoDerivada);
+
   engancharPreview();
   actualizarPreview();
   actualizarTipoObjetivo();
+  actualizarModoObjetivoDinamico();
 
   try { await cargarCatalogos(); } catch (e) { mostrarFlash("No se pudieron cargar los catálogos: " + e.message, "danger"); }
 
@@ -192,6 +238,9 @@ async function cargarProyectoParaEditar(id) {
     document.getElementById("objetivo_descripcion").value = p.objetivo_descripcion || "";
     document.getElementById("tipo_objetivo").value = p.tipo_objetivo || "anual";
     document.getElementById("objetivo_mensual").value = p.objetivo_mensual || "";
+    document.getElementById("objetivo_unitario").value = p.objetivo_unitario || "";
+    document.getElementById("modo_objetivo_dinamico").value = p.modo_objetivo_dinamico || "monto_directo";
+    document.getElementById("valor_objetivo_indicador").value = p.valor_objetivo_indicador ?? "";
     actualizarTipoObjetivo();
     document.getElementById("categoria_perdida").value = p.categoria_perdida || "";
     document.getElementById("linea_pnl").value = p.linea_pnl || "";
@@ -204,6 +253,7 @@ async function cargarProyectoParaEditar(id) {
     document.getElementById("costo_unitario").value = p.costo_unitario ?? "";
     document.getElementById("unidad_costo").value = p.unidad_costo || "";
     document.getElementById("menor_es_mejor").value = String(!!p.menor_es_mejor);
+    actualizarModoObjetivoDinamico(); // recién ahora están cargados base/costo, así se ve bien la tasa derivada
 
     const cont = document.getElementById("variables-container");
     cont.innerHTML = p.variables.map((v) => `
@@ -229,11 +279,18 @@ document.getElementById("form-proyecto").addEventListener("submit", async (ev) =
     if (variables.length === 0) throw new Error("Definí al menos una variable.");
 
     const tipoObjetivo = document.getElementById("tipo_objetivo").value;
+    const modoObjetivoDinamico = document.getElementById("modo_objetivo_dinamico").value;
     if (tipoObjetivo === "anual" && !document.getElementById("objetivo_valor").value) {
       throw new Error("Completá el objetivo de ahorro para los 12 meses.");
     }
     if (tipoObjetivo === "mensual" && !document.getElementById("objetivo_mensual").value) {
       throw new Error("Completá el objetivo de ahorro mensual.");
+    }
+    if (tipoObjetivo === "dinamico" && modoObjetivoDinamico === "monto_directo" && !document.getElementById("objetivo_unitario").value) {
+      throw new Error("Completá el objetivo de ahorro por unidad de volumen.");
+    }
+    if (tipoObjetivo === "dinamico" && modoObjetivoDinamico === "nivel_indicador" && !document.getElementById("valor_objetivo_indicador").value) {
+      throw new Error("Completá el valor objetivo del indicador a lograr.");
     }
 
     const datos = {
@@ -244,10 +301,15 @@ document.getElementById("form-proyecto").addEventListener("submit", async (ev) =
       fecha_inicio: document.getElementById("fecha_inicio").value,
       objetivo_valor: tipoObjetivo === "mensual"
         ? (parseFloat(document.getElementById("objetivo_mensual").value) || 0) * 12
-        : parseFloat(document.getElementById("objetivo_valor").value),
+        : (parseFloat(document.getElementById("objetivo_valor").value) || 0),
       objetivo_descripcion: document.getElementById("objetivo_descripcion").value,
       tipo_objetivo: tipoObjetivo,
       objetivo_mensual: tipoObjetivo === "mensual" ? parseFloat(document.getElementById("objetivo_mensual").value) : null,
+      modo_objetivo_dinamico: tipoObjetivo === "dinamico" ? modoObjetivoDinamico : null,
+      objetivo_unitario: (tipoObjetivo === "dinamico" && modoObjetivoDinamico === "monto_directo")
+        ? parseFloat(document.getElementById("objetivo_unitario").value) : null,
+      valor_objetivo_indicador: (tipoObjetivo === "dinamico" && modoObjetivoDinamico === "nivel_indicador")
+        ? parseFloat(document.getElementById("valor_objetivo_indicador").value) : null,
       categoria_perdida: document.getElementById("categoria_perdida").value,
       linea_pnl: document.getElementById("linea_pnl").value,
       tipo_impacto: document.getElementById("tipo_impacto").value,
