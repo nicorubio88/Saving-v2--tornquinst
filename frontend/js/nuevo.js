@@ -61,29 +61,58 @@ function actualizarModoObjetivoDinamico() {
   actualizarTasaObjetivoDerivada();
 }
 
+// ------------------------------------------------ modo de costo (fijo / variable)
+function actualizarModoCosto() {
+  const modo = document.getElementById("costo_unitario_modo").value;
+  document.getElementById("fila-costo-fijo").style.display = modo === "fijo" ? "" : "none";
+  document.getElementById("fila-costo-variable").style.display = modo === "variable" ? "" : "none";
+  actualizarTasaObjetivoDerivada();
+  calcularPreview();
+}
+
 /**
  * Vista previa en vivo del $/unidad derivado en modo "nivel_indicador":
  * (base − objetivo) × costo. Usa los mismos campos de la sección 5 (línea de
  * base y costo), así que se recalcula cada vez que se toca cualquiera de
  * esos campos, no solo el propio valor_objetivo_indicador.
+ *
+ * Si el costo es "variable" (se carga cada período), no hay un único número
+ * para mostrar acá — el objetivo real de cada mes depende del precio de ESE
+ * mes. En ese caso se muestra la fórmula en palabras en vez de un número, y
+ * se remite a la simulación del punto 6 (que si toma un valor de prueba de
+ * la variable de precio).
  */
 function actualizarTasaObjetivoDerivada() {
   const el = document.getElementById("tasa-objetivo-derivada");
   if (!el) return;
   const base = parseFloat(document.getElementById("valor_base_indicador").value);
   const objetivo = parseFloat(document.getElementById("valor_objetivo_indicador").value);
-  const costo = parseFloat(document.getElementById("costo_unitario").value);
   const menorEsMejor = document.getElementById("menor_es_mejor").value === "true";
-  const unidadCosto = document.getElementById("unidad_costo").value || "$";
+  const costoModo = document.getElementById("costo_unitario_modo").value;
 
-  if (isNaN(base) || isNaN(objetivo) || isNaN(costo)) {
-    el.textContent = "completá la línea de base, el costo y este valor";
+  if (isNaN(base) || isNaN(objetivo)) {
+    el.textContent = "completá la línea de base y este valor";
     return;
   }
   const diferencia = menorEsMejor ? (base - objetivo) : (objetivo - base);
+  const advertencia = diferencia < 0 ? " ⚠️ (negativo: el objetivo es peor que la base, revisá el sentido de la mejora)" : "";
+
+  if (costoModo === "variable") {
+    const costoVariable = document.getElementById("costo_unitario_variable").value || "el precio";
+    el.textContent = `Se recalcula cada período con el precio real cargado en '${costoVariable}': `
+      + `(${diferencia.toLocaleString("es-AR", { maximumFractionDigits: 4 })} × precio de ese mes) por unidad de volumen.`
+      + ` Probalo con un precio de ejemplo en la simulación del punto 6.${advertencia}`;
+    return;
+  }
+
+  const costo = parseFloat(document.getElementById("costo_unitario").value);
+  if (isNaN(costo)) {
+    el.textContent = "completá también el costo unitario fijo";
+    return;
+  }
   const tasa = diferencia * costo;
   const tasaFormateada = "US$ " + tasa.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-  el.textContent = `${tasaFormateada} por unidad de volumen${diferencia < 0 ? " ⚠️ (negativo: el objetivo es peor que la base, revisá el sentido de la mejora)" : ""}`;
+  el.textContent = `${tasaFormateada} por unidad de volumen${advertencia}`;
 }
 
 // ------------------------------------------------ vista previa en vivo
@@ -106,14 +135,27 @@ function actualizarPreview() {
     .join("");
   cont.querySelectorAll(".preview-var").forEach((i) => i.addEventListener("input", calcularPreview));
 
+  actualizarSelectCostoVariable(variables);
   calcularPreview();
+}
+
+/** Repuebla el <select> de "variable de costo" con las variables declaradas en el punto 3. */
+function actualizarSelectCostoVariable(variables) {
+  const sel = document.getElementById("costo_unitario_variable");
+  const actual = sel.value;
+  sel.innerHTML = variables.length
+    ? variables.map((v) => `<option value="${v.nombre}">${v.label || v.nombre} (${v.nombre})</option>`).join("")
+    : `<option value="">— Declará variables en el punto 3 —</option>`;
+  if (variables.some((v) => v.nombre === actual)) sel.value = actual;
 }
 
 function calcularPreview() {
   const resultado = document.getElementById("preview-resultado");
   const expresion = document.getElementById("expresion_indicador").value.trim();
   const base = parseFloat(document.getElementById("valor_base_indicador").value);
+  const costoModo = document.getElementById("costo_unitario_modo").value;
   const costo = parseFloat(document.getElementById("costo_unitario").value);
+  const costoVariable = document.getElementById("costo_unitario_variable").value;
   const variableVolumen = document.getElementById("variable_volumen").value.trim();
   const menorEsMejor = document.getElementById("menor_es_mejor").value === "true";
   const unidadInd = document.getElementById("unidad_indicador").value.trim();
@@ -126,24 +168,29 @@ function calcularPreview() {
     else valores[i.dataset.nombre] = v;
   });
 
-  if (!expresion || faltan || Object.keys(valores).length === 0 || isNaN(base) || isNaN(costo)) {
+  const costoListo = costoModo === "variable" ? !!costoVariable : !isNaN(costo);
+  if (!expresion || faltan || Object.keys(valores).length === 0 || isNaN(base) || !costoListo) {
     resultado.innerHTML = "Completá las variables de prueba, la fórmula, la línea de base y el costo para ver la simulación.";
     return;
   }
 
   try {
     const { indicador, ahorro } = calcularAhorroUI(
-      { expresion, base, costo, variableVolumen, menorEsMejor },
+      { expresion, base, costo, costoModo, costoVariable, variableVolumen, menorEsMejor },
       valores
     );
+    const costoUsado = costoModo === "variable" ? valores[costoVariable] : costo;
     const esAhorro = ahorro >= 0;
     const detalleVolumen = variableVolumen && valores[variableVolumen] !== undefined
       ? ` × ${valores[variableVolumen].toLocaleString("es-AR")} (${variableVolumen})`
       : "";
+    const detalleCosto = costoModo === "variable"
+      ? `${costoUsado.toLocaleString("es-AR")} $ (variable: ${costoVariable}, valor de prueba de arriba)`
+      : `${costo.toLocaleString("es-AR")} $`;
     resultado.innerHTML = `
       <div class="preview-linea">Indicador calculado: <strong>${indicador.toLocaleString("es-AR", { maximumFractionDigits: 3 })} ${unidadInd}</strong></div>
       <div class="preview-linea">Línea de base: <strong>${base.toLocaleString("es-AR")} ${unidadInd}</strong></div>
-      <div class="preview-linea">Diferencia: ${(menorEsMejor ? base - indicador : indicador - base).toLocaleString("es-AR", { maximumFractionDigits: 3 })} ${unidadInd} × ${costo.toLocaleString("es-AR")} $${detalleVolumen}</div>
+      <div class="preview-linea">Diferencia: ${(menorEsMejor ? base - indicador : indicador - base).toLocaleString("es-AR", { maximumFractionDigits: 3 })} ${unidadInd} × ${detalleCosto}${detalleVolumen}</div>
       <div class="preview-linea resultado-ahorro ${esAhorro ? "valor-positivo" : "valor-negativo"}">
         ${esAhorro ? "✅ AHORRO" : "⚠️ PÉRDIDA"} del período: ${fmtMoney(ahorro)}
       </div>`;
@@ -195,7 +242,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("modo_objetivo_dinamico").addEventListener("change", actualizarModoObjetivoDinamico);
   document.getElementById("valor_objetivo_indicador").addEventListener("input", actualizarTasaObjetivoDerivada);
-  // La tasa derivada también depende de estos 4 campos, que viven en la sección 5:
+  document.getElementById("costo_unitario_modo").addEventListener("change", actualizarModoCosto);
+  document.getElementById("costo_unitario_variable").addEventListener("change", actualizarTasaObjetivoDerivada);
+  document.getElementById("costo_unitario_variable").addEventListener("change", calcularPreview);
+  // La tasa derivada también depende de estos campos, que viven en la sección 5:
   ["valor_base_indicador", "costo_unitario", "unidad_costo"]
     .forEach((id) => document.getElementById(id).addEventListener("input", actualizarTasaObjetivoDerivada));
   document.getElementById("menor_es_mejor").addEventListener("change", actualizarTasaObjetivoDerivada);
@@ -204,6 +254,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   actualizarPreview();
   actualizarTipoObjetivo();
   actualizarModoObjetivoDinamico();
+  actualizarModoCosto();
 
   try { await cargarCatalogos(); } catch (e) { mostrarFlash("No se pudieron cargar los catálogos: " + e.message, "danger"); }
 
@@ -253,7 +304,6 @@ async function cargarProyectoParaEditar(id) {
     document.getElementById("costo_unitario").value = p.costo_unitario ?? "";
     document.getElementById("unidad_costo").value = p.unidad_costo || "";
     document.getElementById("menor_es_mejor").value = String(!!p.menor_es_mejor);
-    actualizarModoObjetivoDinamico(); // recién ahora están cargados base/costo, así se ve bien la tasa derivada
 
     const cont = document.getElementById("variables-container");
     cont.innerHTML = p.variables.map((v) => `
@@ -265,7 +315,14 @@ async function cargarProyectoParaEditar(id) {
       </div>`).join("");
 
     engancharPreview();
-    actualizarPreview();
+    actualizarPreview(); // esto puebla el <select> de variable de costo con p.variables
+
+    // Recién ahora existe la opción en el <select>, así que se puede setear el valor:
+    document.getElementById("costo_unitario_modo").value = p.costo_unitario_modo || "fijo";
+    document.getElementById("costo_unitario_variable").value = p.costo_unitario_variable || "";
+    actualizarModoCosto();
+    actualizarModoObjetivoDinamico(); // recién ahora están cargados base/costo, así se ve bien la tasa derivada
+
     mostrarFlash("Estás editando un proyecto existente. Si cambiás la fórmula, la línea de base o el costo, se recalculan automáticamente todas las mediciones ya cargadas.", "success");
   } catch (e) {
     mostrarFlash("No se pudo cargar el proyecto: " + e.message, "danger");
@@ -291,6 +348,13 @@ document.getElementById("form-proyecto").addEventListener("submit", async (ev) =
     }
     if (tipoObjetivo === "dinamico" && modoObjetivoDinamico === "nivel_indicador" && !document.getElementById("valor_objetivo_indicador").value) {
       throw new Error("Completá el valor objetivo del indicador a lograr.");
+    }
+    const costoModo = document.getElementById("costo_unitario_modo").value;
+    if (costoModo === "fijo" && !document.getElementById("costo_unitario").value) {
+      throw new Error("Completá el costo unitario fijo.");
+    }
+    if (costoModo === "variable" && !document.getElementById("costo_unitario_variable").value) {
+      throw new Error("Elegí cuál de las variables declaradas representa el precio.");
     }
 
     const datos = {
@@ -319,7 +383,9 @@ document.getElementById("form-proyecto").addEventListener("submit", async (ev) =
       expresion_indicador: document.getElementById("expresion_indicador").value.trim(),
       unidad_indicador: document.getElementById("unidad_indicador").value,
       valor_base_indicador: parseFloat(document.getElementById("valor_base_indicador").value),
-      costo_unitario: parseFloat(document.getElementById("costo_unitario").value),
+      costo_unitario_modo: costoModo,
+      costo_unitario: costoModo === "fijo" ? parseFloat(document.getElementById("costo_unitario").value) : null,
+      costo_unitario_variable: costoModo === "variable" ? document.getElementById("costo_unitario_variable").value : null,
       unidad_costo: document.getElementById("unidad_costo").value,
       variable_volumen: document.getElementById("variable_volumen").value.trim() || null,
       menor_es_mejor: document.getElementById("menor_es_mejor").value === "true",

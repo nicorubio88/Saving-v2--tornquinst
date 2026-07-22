@@ -29,16 +29,33 @@ function notaObjetivo(p) {
     const diferencia = p.menor_es_mejor
       ? (p.valor_base_indicador - p.valor_objetivo_indicador)
       : (p.valor_objetivo_indicador - p.valor_base_indicador);
+    const base = `<div class="hint">📌 Objetivo dinámico por nivel de indicador: alcanzar <strong>${fmtNumero(p.valor_objetivo_indicador, 2)} ${p.unidad_indicador || ""}</strong>
+      (base: ${fmtNumero(p.valor_base_indicador, 2)})`;
+    if (p.costo_unitario_modo === "variable") {
+      return `${base} → el $/unidad se recalcula CADA PERÍODO con el precio real cargado en
+        <strong>${p.costo_unitario_variable}</strong> de ese mismo período (no hay un número único: cada mes
+        usa su propio precio, igual que el ahorro real).</div>`;
+    }
     const tasa = diferencia * (p.costo_unitario || 0);
-    return `<div class="hint">📌 Objetivo dinámico por nivel de indicador: alcanzar <strong>${fmtNumero(p.valor_objetivo_indicador, 2)} ${p.unidad_indicador || ""}</strong>
-      (base: ${fmtNumero(p.valor_base_indicador, 2)}) → <strong>US$ ${tasa.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong> por unidad de ${p.variable_volumen || "volumen"} al costo vigente.
-      Si cambia el costo del proyecto, este número se actualiza solo.</div>`;
+    return `${base} → <strong>US$ ${tasa.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong>
+      por unidad de ${p.variable_volumen || "volumen"} al costo vigente. Si cambia el costo del proyecto, este número se actualiza solo.</div>`;
   }
   if (p.tipo_objetivo === "dinamico") {
     return `<div class="hint">📌 Objetivo dinámico: <strong>${fmtMoney(p.objetivo_unitario)}</strong> por unidad de
       ${p.variable_volumen || "volumen"} (se recalcula solo según la producción real de cada período)</div>`;
   }
   return "";
+}
+
+/** Nota sobre el costo unitario: fijo (con recálculo retroactivo si se edita) o variable (por período). */
+function notaCosto(p) {
+  if (p.costo_unitario_modo === "variable") {
+    return `<div class="hint">💲 Costo unitario: <strong>variable</strong> — se carga cada período en la
+      variable <strong>${p.costo_unitario_variable}</strong>. Cada mes queda valuado a su propio precio;
+      cargar un mes nuevo no altera los meses anteriores ya calculados.</div>`;
+  }
+  return `<div class="hint">💲 Costo unitario: <strong>fijo</strong> (US$ ${fmtNumero(p.costo_unitario, 4)}
+    ${p.unidad_costo || ""}). Si lo editás, se recalcula TODO el histórico con el costo nuevo.</div>`;
 }
 
 async function render() {
@@ -55,6 +72,7 @@ async function render() {
           <p class="meta">${P.area || "Sin área"} · Responsable: <strong>${P.responsable}</strong></p>
           <p>${P.descripcion || ""}</p>
           <div class="meta-chips">${chipsProyecto(P)}</div>
+          ${notaCosto(P)}
           ${notaObjetivo(P)}
         </div>
         <div class="acciones-encabezado">

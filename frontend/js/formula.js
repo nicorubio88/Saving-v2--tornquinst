@@ -32,13 +32,32 @@ function evaluarFormulaUI(expresion, valores) {
   return r;
 }
 
+/**
+ * Resuelve el costo a usar, igual que costoUnitarioDeRegistro en
+ * FormulaEngine.gs: si cfg.costoModo es "variable", lo saca de
+ * valores[cfg.costoVariable]; si no, usa cfg.costo (número fijo).
+ */
+function resolverCostoUI(cfg, valores) {
+  if (cfg.costoModo === "variable" && cfg.costoVariable) {
+    const v = valores[cfg.costoVariable];
+    return v === undefined || v === null || v === "" ? null : Number(v);
+  }
+  return cfg.costo === undefined || cfg.costo === null || isNaN(cfg.costo) ? null : cfg.costo;
+}
+
 /** Calcula el ahorro de un período igual que lo hace el backend. */
 function calcularAhorroUI(cfg, valores) {
   const indicador = evaluarFormulaUI(cfg.expresion, valores);
+  const costo = resolverCostoUI(cfg, valores);
+  if (costo === null) {
+    throw new Error(cfg.costoModo === "variable"
+      ? `Completá el valor de la variable de costo ('${cfg.costoVariable}') para simular.`
+      : "Completá el costo unitario para simular.");
+  }
   const diferencia = cfg.menorEsMejor
     ? cfg.base - indicador
     : indicador - cfg.base;
-  const ahorroUnitario = diferencia * cfg.costo;
+  const ahorroUnitario = diferencia * costo;
   const ahorro = cfg.variableVolumen && valores[cfg.variableVolumen] !== undefined
     ? ahorroUnitario * valores[cfg.variableVolumen]
     : ahorroUnitario;
