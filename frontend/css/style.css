@@ -249,3 +249,47 @@ tr.editando { background:#fff8e6; }
   .topbar, .footer, .no-print { display:none !important; }
   body { background:white; }
 }
+
+/* ================= v3: componentes compartidos (common.js) ================= */
+
+/* KPI con icono: mejora el escaneo visual rápido (plant manager en el celular) */
+.kpi-icon { font-size: 1.3rem; margin-bottom: 2px; opacity: 0.9; }
+
+/* Semáforo "pill" con texto visible — el punto solo (v2) dependía del title
+   (tooltip), que no funciona al tacto en mobile. Ahora el texto es visible
+   siempre, que es lo que necesita un gerente mirando el celular en planta. */
+.semaforo-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600;
+  white-space: nowrap;
+}
+.semaforo-pill .semaforo { margin: 0; }
+.semaforo-pill-verde { background: #e3f1da; color: #2c5c1c; }
+.semaforo-pill-amarillo { background: #fdeacb; color: #8a5a06; }
+.semaforo-pill-rojo { background: #fbe7e5; color: #96261c; }
+.semaforo-pill-sin_datos { background: #eceee9; color: #666; }
+
+/* Chips agrupados con un pequeño margen inferior consistente */
+.meta-chips { margin: 6px 0; }
+
+/* Encabezado del detalle de proyecto */
+.encabezado-proyecto {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  flex-wrap: wrap; gap: 14px; margin-bottom: 4px;
+}
+.acciones-encabezado {
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+}
+
+/* Botones de acción dentro de una card de proyecto (dashboard) */
+.acciones-card {
+  margin-top: 10px; display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;
+}
+.btn-peligro { color: #b23a2f; }
+.btn-peligro:hover { background: #fbe7e5; }
+
+/* Rama del árbol de pérdidas con proyectos sin categorizar: alerta suave */
+.rama-alerta { border-top-color: #c0392b; }
+
+/* Mejor legibilidad de los <select> nativos dentro de las cards */
+.acciones-encabezado select, .proyecto-item select { max-width: 180px; }

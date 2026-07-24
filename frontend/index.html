@@ -21,6 +21,23 @@
 <main class="container">
   <h1>Seguimiento de Proyectos de Ahorro</h1>
 
+  <div class="filtros-bar no-print">
+    <div>
+      <label>Ver desde</label>
+      <input type="date" id="dash-desde">
+    </div>
+    <div>
+      <label>hasta</label>
+      <input type="date" id="dash-hasta">
+    </div>
+    <div style="flex:0">
+      <button type="button" class="btn-secundario btn-small" id="dash-limpiar">Ver todo el histórico</button>
+    </div>
+    <div style="flex:2;min-width:220px">
+      <div class="hint" id="dash-estado-filtro">Mostrando todo el histórico cargado.</div>
+    </div>
+  </div>
+
   <div class="kpi-row" id="kpi-row"><div class="kpi"><div class="kpi-label">Cargando…</div></div></div>
 
   <div id="alertas"></div>

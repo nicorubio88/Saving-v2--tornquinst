@@ -18,10 +18,16 @@ function tooltipEnDolares(ctx) {
   return `${ctx.dataset.label}: ${fmtMoney(valor)}`;
 }
 
+let dashDesde = "";
+let dashHasta = "";
+
 async function cargarDashboard() {
   const kpiRow = document.getElementById("kpi-row");
   try {
-    const d = await apiGet({ action: "dashboard" });
+    const q = { action: "dashboard" };
+    if (dashDesde) q.desde = dashDesde;
+    if (dashHasta) q.hasta = dashHasta;
+    const d = await apiGet(q);
     datosDashboard = d;
 
     renderKpis(d);
@@ -29,6 +35,27 @@ async function cargarDashboard() {
     renderLista(d);
     renderConsolidado("mensual");
     renderPnl(d);
+
+    const inpDesde = document.getElementById("dash-desde");
+    const inpHasta = document.getElementById("dash-hasta");
+    if (inpDesde && !inpDesde.dataset.enganchado) {
+      inpDesde.dataset.enganchado = "1";
+      inpDesde.addEventListener("change", (e) => { dashDesde = e.target.value; cargarDashboard(); });
+      inpHasta.addEventListener("change", (e) => { dashHasta = e.target.value; cargarDashboard(); });
+      document.getElementById("dash-limpiar").addEventListener("click", () => {
+        dashDesde = ""; dashHasta = "";
+        inpDesde.value = ""; inpHasta.value = "";
+        cargarDashboard();
+      });
+    }
+    const estado = document.getElementById("dash-estado-filtro");
+    if (estado) {
+      estado.innerHTML = d.filtro_aplicado
+        ? `Filtrado del <strong>${d.filtro_aplicado.desde || "…"}</strong> al <strong>${d.filtro_aplicado.hasta || "…"}</strong>`
+          + ` — ${d.registros_en_rango} medición(es) en el rango. Los KPIs, el gráfico y el P&L de abajo`
+          + ` corresponden SOLO a ese recorte.`
+        : "Mostrando todo el histórico cargado.";
+    }
 
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -55,9 +82,10 @@ function renderKpis(d) {
     </div>
     <div class="kpi">
       <div class="kpi-icon">🎯</div>
-      <div class="kpi-label">Objetivo anual comprometido</div>
+      <div class="kpi-label">Objetivo anual ${d.objetivo_total_es_estimado ? "(estimado)" : "comprometido"}</div>
       <div class="kpi-value">${fmtMoney(d.objetivo_total)}</div>
-      <div class="hint">${d.proyectos_activos} proyecto${d.proyectos_activos === 1 ? "" : "s"} activo${d.proyectos_activos === 1 ? "" : "s"}</div>
+      <div class="hint">${d.proyectos_activos} proyecto${d.proyectos_activos === 1 ? "" : "s"} activo${d.proyectos_activos === 1 ? "" : "s"}${
+        d.objetivo_total_es_estimado ? " · incluye objetivos dinámicos estimados con el promedio mensual cargado" : ""}</div>
     </div>
     <div class="kpi">
       <div class="kpi-icon">📈</div>
