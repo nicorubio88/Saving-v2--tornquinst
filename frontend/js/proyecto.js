@@ -10,6 +10,8 @@ let P = null;                       // proyecto actual (última respuesta del ba
 let periodoActual = "periodo";      // periodo | semanal | mensual | anual
 let filtroMes = "";
 let filtroSemana = "";
+let filtroDesde = "";
+let filtroHasta = "";
 let editandoRegistro = null;        // id del registro que se está editando inline, o null
 
 function hoyISO() { return new Date().toISOString().slice(0, 10); }
@@ -138,6 +140,14 @@ async function render() {
               ${op.semanas.map((s) => `<option value="${s}" ${s === filtroSemana ? "selected" : ""}>${s}</option>`).join("")}
             </select>
           </div>
+          <div>
+            <label>...o un rango de fechas libre — desde</label>
+            <input type="date" id="filtro-desde" value="${filtroDesde}">
+          </div>
+          <div>
+            <label>hasta</label>
+            <input type="date" id="filtro-hasta" value="${filtroHasta}">
+          </div>
           <div style="flex:0">
             <button type="button" class="btn-secundario btn-small" id="btn-limpiar-filtros">Limpiar filtros</button>
           </div>
@@ -191,9 +201,11 @@ async function render() {
 
     document.getElementById("select-estado").addEventListener("change", cambiarEstado);
     document.getElementById("form-registro").addEventListener("submit", cargarRegistro);
-    document.getElementById("filtro-mes").addEventListener("change", (e) => { filtroMes = e.target.value; filtroSemana = ""; refrescarGrafico(); });
-    document.getElementById("filtro-semana").addEventListener("change", (e) => { filtroSemana = e.target.value; filtroMes = ""; refrescarGrafico(); });
-    document.getElementById("btn-limpiar-filtros").addEventListener("click", () => { filtroMes = ""; filtroSemana = ""; render(); });
+    document.getElementById("filtro-mes").addEventListener("change", (e) => { filtroMes = e.target.value; filtroSemana = ""; filtroDesde = ""; filtroHasta = ""; refrescarGrafico(); });
+    document.getElementById("filtro-semana").addEventListener("change", (e) => { filtroSemana = e.target.value; filtroMes = ""; filtroDesde = ""; filtroHasta = ""; refrescarGrafico(); });
+    document.getElementById("filtro-desde").addEventListener("change", (e) => { filtroDesde = e.target.value; filtroMes = ""; filtroSemana = ""; refrescarGrafico(); });
+    document.getElementById("filtro-hasta").addEventListener("change", (e) => { filtroHasta = e.target.value; filtroMes = ""; filtroSemana = ""; refrescarGrafico(); });
+    document.getElementById("btn-limpiar-filtros").addEventListener("click", () => { filtroMes = ""; filtroSemana = ""; filtroDesde = ""; filtroHasta = ""; render(); });
     document.querySelectorAll(".tab-btn").forEach((b) => b.addEventListener("click", () => {
       periodoActual = b.dataset.periodo;
       document.querySelectorAll(".tab-btn").forEach((x) => x.classList.remove("active"));
@@ -211,7 +223,10 @@ async function render() {
 function registrosVisibles() {
   return P.registros.filter((r) => {
     const anchor = r.fecha_hasta || r.fecha_desde;
-    return !filtroMes || anchor.slice(0, 7) === filtroMes;
+    if (filtroMes && anchor.slice(0, 7) !== filtroMes) return false;
+    if (filtroDesde && anchor < filtroDesde) return false;
+    if (filtroHasta && anchor > filtroHasta) return false;
+    return true;
   });
 }
 
@@ -288,12 +303,30 @@ async function refrescarGrafico() {
   const q = { action: "evolucion", id: proyectoId, periodo: periodoActual };
   if (filtroMes) q.mes = filtroMes;
   if (filtroSemana) q.semana = filtroSemana;
+  if (filtroDesde) q.desde = filtroDesde;
+  if (filtroHasta) q.hasta = filtroHasta;
   const data = await apiGet(q);
 
-  const totalFiltrado = data.ahorro_periodo.reduce((s, v) => s + v, 0);
-  let texto = `${data.etiquetas.length} período(s) — ahorro total mostrado: <strong>${fmtMoney(totalFiltrado)}</strong>`;
+  const r = data.resumen_rango || {};
+  let texto = `${data.etiquetas.length} período(s) — ahorro: <strong>${fmtMoney(r.ahorro_total)}</strong>`;
+  if (r.objetivo_total) {
+    texto += ` · objetivo del rango: <strong>${fmtMoney(r.objetivo_total)}</strong>`;
+    texto += ` · cumplimiento: <strong class="${r.cumplimiento_pct >= 100 ? "valor-positivo" : ""}">${r.cumplimiento_pct}%</strong>`;
+  }
+  if (r.dias_del_rango) {
+    if (r.estimado_confiable) {
+      texto += ` · al ritmo de este rango (${r.dias_del_rango} días), estimado anualizado: <strong>${fmtMoney(r.estimado_anualizado)}</strong>`;
+    } else {
+      // Extrapolar ×365 desde pocos días da números absurdos. Se avisa en vez
+      // de mostrar una cifra que invita a leerse como proyección seria.
+      texto += ` · <span class="valor-negativo">sin datos suficientes para estimar el año`
+        + ` (${r.dias_del_rango} día${r.dias_del_rango === 1 ? "" : "s"} cargado${r.dias_del_rango === 1 ? "" : "s"};`
+        + ` hacen falta al menos ${r.dias_minimos_para_extrapolar})</span>`;
+    }
+  }
   if (filtroMes) texto += ` · filtrado por ${nombreMes(filtroMes)}`;
   if (filtroSemana) texto += ` · filtrado por semana ${filtroSemana}`;
+  if (filtroDesde || filtroHasta) texto += ` · filtrado del ${filtroDesde || "…"} al ${filtroHasta || "…"}`;
   document.getElementById("resumen-filtro").innerHTML = texto;
 
   const etiquetas = periodoActual === "mensual" ? data.etiquetas.map(nombreMes) : data.etiquetas;
@@ -305,7 +338,7 @@ async function refrescarGrafico() {
     data: {
       labels: etiquetas,
       datasets: [
-        { label: "Ahorro del período", data: data.ahorro_periodo, backgroundColor: "#7FA76A", order: 2, borderRadius: 3 },
+        { label: "Ahorro del período", data: data.ahorro_periodo, backgroundColor: coloresPorSigno(data.ahorro_periodo), order: 2, borderRadius: 3 },
         { label: "Objetivo del período", data: data.objetivo_periodo, type: "line", borderColor: "#c98a12", borderDash: [5, 4], pointRadius: 0, fill: false, order: 1 },
         { label: "Ahorro acumulado", data: data.ahorro_acumulado, type: "line", borderColor: "#2E4A1C", backgroundColor: "rgba(46,74,28,0.1)", fill: true, tension: 0.25, order: 0 },
       ],

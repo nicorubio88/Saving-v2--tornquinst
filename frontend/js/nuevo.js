@@ -392,7 +392,19 @@ document.getElementById("form-proyecto").addEventListener("submit", async (ev) =
     };
 
     if (modoEdicion) {
-      await apiPost({ action: "actualizar_proyecto", proyecto_id: modoEdicion, datos });
+      const res = await apiPost({ action: "actualizar_proyecto", proyecto_id: modoEdicion, datos });
+      // Si el cambio de fórmula dejó registros que no se pudieron recalcular,
+      // hay que avisar: si no, el proyecto queda mezclando la fórmula vieja y
+      // la nueva sin que nada lo indique.
+      if (res && res.registros_fallidos > 0) {
+        mostrarFlash(
+          `⚠️ Se guardó el proyecto, pero ${res.registros_fallidos} medición(es) no se pudieron recalcular con la fórmula nueva `
+          + `(probablemente les falta alguna variable que agregaste). Esas mediciones conservan su valor anterior, `
+          + `calculado con la fórmula vieja. Revisalas y volvé a cargarlas para que todo el histórico quede consistente. `
+          + `IDs: ${(res.ids_fallidos || []).join(", ")}`,
+          "danger");
+        return; // no redirige: el usuario tiene que leer esto
+      }
       window.location.href = `proyecto.html?id=${modoEdicion}`;
     } else {
       const r = await apiPost({ action: "crear_proyecto", datos });
