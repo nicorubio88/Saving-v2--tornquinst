@@ -81,3 +81,14 @@ function barraProgreso(pct, maxAncho = null) {
       <div class="progress-bar-inner ${pct < 0 ? "negativo" : ""}" style="width:${Math.min(positivo, 100)}%"></div>
     </div>`;
 }
+
+// ------------------------------------------------------------- Colores de gráficos (Chart.js)
+/**
+ * Para un dataset de barras de Chart.js: un array de colores, uno por barra,
+ * verde si el valor es >= 0 y rojo si es negativo (pérdida). Se usa como
+ * backgroundColor en vez de un string único, para que cada barra tome su
+ * propio color según el signo.
+ */
+function coloresPorSigno(valores, colorPositivo = "#7FA76A", colorNegativo = "#c0392b") {
+  return valores.map((v) => (v < 0 ? colorNegativo : colorPositivo));
+}

@@ -138,7 +138,7 @@ function renderConsolidado(vista) {
           })),
           {
             label: "Objetivo mensual",
-            data: c.etiquetas.map(() => c.objetivo_mensual),
+            data: c.objetivo_periodo,
             type: "line",
             borderColor: "#c98a12",
             borderDash: [6, 4],
@@ -187,7 +187,7 @@ function renderPnl(d) {
     data: {
       labels: d.pnl.lineas.map((l) => l.nombre),
       datasets: [
-        { label: "Ahorro acumulado", data: d.pnl.lineas.map((l) => l.ahorro), backgroundColor: "#548235", borderRadius: 3 },
+        { label: "Ahorro acumulado", data: d.pnl.lineas.map((l) => l.ahorro), backgroundColor: coloresPorSigno(d.pnl.lineas.map((l) => l.ahorro)), borderRadius: 3 },
         { label: "Objetivo anual", data: d.pnl.lineas.map((l) => l.objetivo), backgroundColor: "#d9dfd3", borderRadius: 3 },
       ],
     },

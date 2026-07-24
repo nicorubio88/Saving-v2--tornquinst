@@ -55,7 +55,7 @@ function dibujarGraficoRamas(a) {
     data: {
       labels: a.ramas.map((r) => r.nombre),
       datasets: [
-        { label: "Ahorro acumulado", data: a.ramas.map((r) => r.ahorro), backgroundColor: "#548235", borderRadius: 3 },
+        { label: "Ahorro acumulado", data: a.ramas.map((r) => r.ahorro), backgroundColor: coloresPorSigno(a.ramas.map((r) => r.ahorro)), borderRadius: 3 },
         { label: "Objetivo anual", data: a.ramas.map((r) => r.objetivo), backgroundColor: "#d9dfd3", borderRadius: 3 },
       ],
     },
