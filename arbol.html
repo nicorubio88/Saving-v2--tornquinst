@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Árbol de Pérdidas e Impacto en P&L</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="topbar no-print">
+  <a href="index.html" class="brand">💡 Seguimiento de Ahorros</a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="nuevo.html">+ Nuevo Proyecto</a>
+    <a href="arbol.html">Árbol de Pérdidas</a>
+    <a href="ideas.html">Banco de Ideas</a>
+  </nav>
+</header>
+
+<main class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+    <h1>Árbol de Pérdidas → Impacto en el P&amp;L</h1>
+    <div class="no-print" style="display:flex;gap:8px">
+      <button class="btn-secundario btn-small" onclick="window.print()">🖨 Imprimir / PDF</button>
+    </div>
+  </div>
+  <p class="hint">
+    Cada proyecto de ahorro está asignado a una categoría del árbol de pérdidas (JIPM / Suzuki)
+    y a una línea del P&amp;L. Esta vista consolida cuánto ahorro real está generando cada rama.
+  </p>
+
+  <div class="kpi-row" id="kpi-arbol"></div>
+
+  <div class="card">
+    <h3>Ahorro acumulado por rama de pérdida</h3>
+    <canvas id="grafico-ramas" height="90"></canvas>
+  </div>
+
+  <div id="contenido-arbol"><p>Cargando…</p></div>
+
+  <h2 class="section-title">Impacto por línea del P&amp;L</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Línea del P&amp;L</th><th>Tipo</th><th>Proyectos</th><th>Objetivo anual</th><th>Ahorro acumulado</th><th>Avance</th></tr></thead>
+      <tbody id="tbody-pnl"></tbody>
+    </table>
+  </div>
+</main>
+
+<footer class="footer">Papelera del Sur · Planta Tornquist · TPM / Mejora Enfocada</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/arbol.js"></script>
+</body>
+</html>

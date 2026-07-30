@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seguimiento de Ahorros - Papelera del Sur</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a href="index.html" class="brand">💡 Seguimiento de Ahorros</a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="nuevo.html">+ Nuevo Proyecto</a>
+    <a href="arbol.html">Árbol de Pérdidas</a>
+    <a href="ideas.html">Banco de Ideas</a>
+  </nav>
+</header>
+
+<main class="container">
+  <h1>Seguimiento de Proyectos de Ahorro</h1>
+
+  <div class="filtros-bar no-print">
+    <div>
+      <label>Ver desde</label>
+      <input type="date" id="dash-desde">
+    </div>
+    <div>
+      <label>hasta</label>
+      <input type="date" id="dash-hasta">
+    </div>
+    <div style="flex:0">
+      <button type="button" class="btn-secundario btn-small" id="dash-limpiar">Ver todo el histórico</button>
+    </div>
+    <div>
+      <label>Mostrar</label>
+      <select id="dash-estado">
+        <option value="activo" selected>Solo proyectos activos</option>
+        <option value="todos">Todos (incluye pausados y cerrados)</option>
+        <option value="cerrados">Solo cerrados</option>
+      </select>
+    </div>
+    <div style="flex:0">
+      <button type="button" class="btn btn-small" id="dash-exportar">⬇ Exportar a Excel</button>
+    </div>
+    <div style="flex:2;min-width:200px">
+      <div class="hint" id="dash-estado-filtro">Mostrando todo el histórico cargado.</div>
+    </div>
+  </div>
+
+  <div id="alerta-reposicion"></div>
+
+  <div class="kpi-row" id="kpi-row"><div class="kpi"><div class="kpi-label">Cargando…</div></div></div>
+
+  <div id="alertas"></div>
+
+  <div class="card">
+    <h3>Evolución consolidada de todos los proyectos</h3>
+    <div class="tabs">
+      <button class="tab-btn active" data-vista="mensual">Ahorro mensual por proyecto</button>
+      <button class="tab-btn" data-vista="acumulado">Acumulado vs objetivo</button>
+    </div>
+    <div class="opciones-grafico">
+      <label><input type="checkbox" id="op-valores"> Mostrar montos en las barras</label>
+      <label><input type="checkbox" id="op-nombres"> Mostrar nombre del proyecto</label>
+      <label><input type="checkbox" id="op-total-mes"> Mostrar total del mes</label>
+      <label><input type="checkbox" id="op-proyeccion"> Proyectar próximos 12 meses</label>
+    </div>
+    <canvas id="grafico-consolidado" height="110"></canvas>
+    <div id="nota-proyeccion" class="hint" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h3>Impacto por línea del P&amp;L</h3>
+    <canvas id="grafico-pnl" height="90"></canvas>
+  </div>
+
+  <h2 class="section-title">Proyectos</h2>
+  <div class="proyecto-list" id="proyecto-list"></div>
+</main>
+
+<footer class="footer">Papelera del Sur · Planta Tornquist · TPM / Mejora Enfocada</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nuevo Proyecto de Ahorro</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <a href="index.html" class="brand">💡 Seguimiento de Ahorros</a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="nuevo.html">+ Nuevo Proyecto</a>
+    <a href="arbol.html">Árbol de Pérdidas</a>
+    <a href="ideas.html">Banco de Ideas</a>
+  </nav>
+</header>
+
+<main class="container">
+  <h1 id="titulo-pagina">Nuevo Proyecto de Ahorro</h1>
+  <p class="hint">El proyecto corre automáticamente 12 meses desde la fecha de inicio.</p>
+
+  <div id="flash-area"></div>
+
+  <form class="form-card card" id="form-proyecto">
+
+    <h3>1. Datos generales</h3>
+    <div class="row-2">
+      <div><label>Nombre del proyecto</label><input type="text" id="nombre" required></div>
+      <div>
+        <label>Área / Sector</label><input type="text" id="area" placeholder="Ej: Preparación de pasta">
+      </div>
+    </div>
+    <div><label>Descripción de la mejora</label><textarea id="descripcion" rows="2"></textarea></div>
+    <div class="row-2">
+      <div><label>Responsable</label><input type="text" id="responsable" required></div>
+      <div><label>Fecha de inicio</label><input type="date" id="fecha_inicio" required></div>
+    </div>
+
+    <div class="ayuda">
+      <strong>¿Cómo querés definir el objetivo?</strong> Elegí "Total para los 12 meses" si el ahorro
+      se acumula de forma más o menos pareja durante el año. Elegí <strong>"Monto fijo por mes"</strong>
+      cuando el objetivo es en realidad mensual y constante — típico de una <em>sustitución de insumo</em>:
+      por ejemplo, "sustituir siempre 200 ton/mes de fibra corta por una más barata", sin importar si
+      algunas semanas se sustituye más rápido y otras más lento.
+      <br><br>
+      Elegí <strong>"Dinámico (según producción real)"</strong> cuando el ahorro esperado depende de un
+      volumen que NO es constante mes a mes — por ejemplo, viajes de transporte: el objetivo de cada
+      mes sale de <code>$ objetivo por tonelada × toneladas realmente despachadas ese mes</code>. Si un
+      mes se despacha poco, el objetivo de ese mes baja solo; si se despacha mucho, sube solo. No hay
+      que reestimarlo cada vez.
+      <br><br>
+      Dentro de "Dinámico" hay 2 formas de definir el $/unidad objetivo — elegí
+      <strong>"Nivel objetivo del indicador"</strong> cuando medís algo como eficiencia energética
+      (kWh/ton): ahí vos controlás el <em>nivel de eficiencia</em> que querés lograr, pero NO controlás
+      el precio de la energía. Con este modo, cargás el nivel que querés alcanzar (ej: bajar de 145 a
+      130 kWh/ton) y la app deriva sola el $/ton usando el costo vigente — si el costo del insumo sube
+      o baja más adelante, el objetivo en $ se actualiza solo, en la misma base que el ahorro real.
+    </div>
+    <div class="row-2">
+      <div>
+        <label>Tipo de objetivo</label>
+        <select id="tipo_objetivo">
+          <option value="anual" selected>Total para los 12 meses</option>
+          <option value="mensual">Monto fijo por mes (constante)</option>
+          <option value="dinamico">Dinámico (según producción real)</option>
+        </select>
+      </div>
+      <div id="campo-objetivo-anual">
+        <label id="label-objetivo-anual">Objetivo de ahorro para los 12 meses ($)</label>
+        <input type="number" step="any" id="objetivo_valor">
+      </div>
+      <div id="campo-objetivo-mensual" style="display:none">
+        <label>Objetivo de ahorro FIJO por mes ($)</label>
+        <input type="number" step="any" id="objetivo_mensual" placeholder="Ej: 200 ton × $60.000/ton = 12.000.000">
+        <div class="hint">Equivalente anual: <strong id="equivalente-anual">-</strong> (informativo, se calcula solo)</div>
+      </div>
+      <div id="campo-objetivo-dinamico" style="display:none">
+        <label>¿Cómo definís el $/unidad objetivo?</label>
+        <select id="modo_objetivo_dinamico">
+          <option value="monto_directo">Monto directo por unidad de volumen ($)</option>
+          <option value="nivel_indicador">Nivel objetivo del indicador (recomendado si el costo puede variar)</option>
+        </select>
+
+        <div id="sub-campo-monto-directo" style="margin-top:10px">
+          <label>Objetivo de ahorro POR UNIDAD de volumen ($)</label>
+          <input type="number" step="any" id="objetivo_unitario" placeholder="Ej: $300 de ahorro objetivo por tonelada despachada">
+          <div class="hint">Se multiplica por la variable de volumen (punto 4) de cada carga real.</div>
+        </div>
+
+        <div id="sub-campo-nivel-indicador" style="display:none;margin-top:10px">
+          <label>Valor OBJETIVO del indicador a lograr</label>
+          <input type="number" step="any" id="valor_objetivo_indicador" placeholder="Ej: 130 (si la línea de base del punto 5 es 145)">
+          <div class="hint">
+            Misma unidad que la línea de base del punto 5. El $/unidad se deriva sola de
+            <code>(base − objetivo) × costo</code> usando los valores del punto 5 — si más
+            adelante cambiás el costo, se vuelve a derivar automáticamente.
+          </div>
+          <div class="preview-box" style="margin-top:8px">
+            $/unidad objetivo derivado ahora mismo: <strong id="tasa-objetivo-derivada">completá la línea de base, el costo y este valor</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div><label>Objetivo en palabras</label><input type="text" id="objetivo_descripcion" placeholder="Ej: Sustituir 200 ton/mes de fibra corta por fibra alternativa"></div>
+
+    <h3 class="section-title">2. Impacto en la estructura de costos</h3>
+    <div class="ayuda">
+      Acá conectás el proyecto con el <strong>árbol de pérdidas</strong> y con el <strong>P&amp;L</strong>.
+      Esto es lo que después permite ver, en una sola vista, qué rama de pérdidas estás atacando
+      y sobre qué línea de costo impacta la mejora.
+    </div>
+    <div class="row-3">
+      <div>
+        <label>Categoría de pérdida (árbol JIPM)</label>
+        <select id="categoria_perdida" required><option value="">Cargando…</option></select>
+      </div>
+      <div>
+        <label>Línea del P&amp;L donde impacta</label>
+        <select id="linea_pnl" required><option value="">Cargando…</option></select>
+      </div>
+      <div>
+        <label>Tipo de impacto</label>
+        <select id="tipo_impacto"><option value="">Cargando…</option></select>
+      </div>
+    </div>
+    <div>
+      <label>Contramedida principal (cómo se baja el costo)</label>
+      <input type="text" id="contramedida" placeholder="Ej: Variadores de frecuencia + secuencia de arranque escalonada">
+    </div>
+
+    <h3 class="section-title">3. ¿Qué vas a medir? (variables)</h3>
+    <div class="ayuda">
+      Definí <strong>los datos crudos que vas a cargar cada semana</strong>, tal como te llegan de planta.
+      Todavía no es la cuenta, son solo los números de entrada.
+      <ul>
+        <li><strong>Nombre corto</strong>: el que se usa en la fórmula. Sin espacios ni acentos. Ej: <code>kw</code>, <code>ton</code>, <code>merma</code>.</li>
+        <li><strong>Etiqueta</strong>: el nombre que ve la persona que carga. Ej: <code>Energía consumida en la semana</code>.</li>
+        <li><strong>Unidad</strong>: en qué se mide. Ej: <code>kWh</code>, <code>t</code>, <code>kg</code>.</li>
+      </ul>
+      <em>Ejemplo típico de energía:</em> una variable <code>kw</code> (kWh consumidos en la semana)
+      y otra <code>ton</code> (toneladas producidas en esa misma semana).
+      <br><br>
+      <em>Ejemplo de sustitución de insumo</em> (ej: reemplazar fibra corta por una más barata,
+      con un volumen mensual fijo repartido de forma pareja o dispareja en el mes): una única
+      variable <code>ton_sustituidas</code> (toneladas del insumo nuevo que reemplazaron al viejo
+      en ese período). Acá NO hace falta variable de volumen — ver el punto 4.
+      <br><br>
+      <em>Ejemplo de reducción de viajes de transporte</em> (menos camiones por tonelada enviada,
+      ej. camiones más grandes): dos variables, <code>ton</code> (toneladas enviadas en el período)
+      y <code>viajes</code> (viajes reales realizados). El indicador es <code>viajes / ton</code>
+      — ver el ejemplo completo con números en el punto 5.
+    </div>
+    <div id="variables-container">
+      <div class="var-row">
+        <input type="text" class="var_nombre" placeholder="nombre corto (ej: kw)" required>
+        <input type="text" class="var_label" placeholder="etiqueta (ej: Energía consumida)">
+        <input type="text" class="var_unidad" placeholder="unidad (ej: kWh)">
+        <button type="button" class="btn-small btn-secundario" onclick="quitarFila(this)">✕</button>
+      </div>
+      <div class="var-row">
+        <input type="text" class="var_nombre" placeholder="nombre corto (ej: ton)" required>
+        <input type="text" class="var_label" placeholder="etiqueta (ej: Toneladas producidas)">
+        <input type="text" class="var_unidad" placeholder="unidad (ej: t)">
+        <button type="button" class="btn-small btn-secundario" onclick="quitarFila(this)">✕</button>
+      </div>
+    </div>
+    <button type="button" class="btn-secundario btn-small" onclick="agregarFila()">+ Agregar variable</button>
+
+    <h3 class="section-title">4. ¿Cómo se calcula el indicador?</h3>
+    <div class="ayuda">
+      El <strong>indicador</strong> normalmente mide <em>consumo por unidad producida</em>:
+      <ul>
+        <li>Energía: <code>kw / ton</code> → kWh por tonelada.</li>
+        <li>Merma: <code>merma / ton</code> → kg de merma por tonelada.</li>
+        <li>Químicos: <code>kg_quimico / ton</code> → kg de químico por tonelada.</li>
+        <li>Transporte: <code>viajes / ton</code> → viajes por tonelada enviada.</li>
+      </ul>
+      <strong>Pero si tu proyecto es una sustitución de volumen</strong> (como el ejemplo de la
+      fibra), el indicador es directamente la cantidad sustituida — <strong>sin dividir por
+      nada</strong>: fórmula = <code>ton_sustituidas</code> (el mismo nombre de la variable, tal
+      cual). En ese caso dejá la <strong>variable de volumen vacía</strong>: el propio dato cargado
+      ya representa el volumen del período, no hay que multiplicarlo por nada más.
+      <br><br>
+      <strong>Variable de volumen</strong> (cuando SÍ aplica): es la que representa <em>cuánto
+      produjiste</em> en el período (casi siempre <code>ton</code>). Convierte el ahorro "por
+      unidad" en el ahorro total en pesos de ese período.
+    </div>
+    <div class="row-2">
+      <div>
+        <label>Fórmula del indicador</label>
+        <input type="text" id="expresion_indicador" required placeholder="kw / ton">
+        <div class="hint">Operadores: + − * / % · Funciones: abs, round, min, max, sqrt, log, pow(a,b)</div>
+      </div>
+      <div>
+        <label>Unidad del indicador</label>
+        <input type="text" id="unidad_indicador" placeholder="Ej: kWh/ton">
+      </div>
+    </div>
+    <div>
+      <label>Variable de volumen del período</label>
+      <input type="text" id="variable_volumen" placeholder="Ej: ton">
+    </div>
+
+    <h3 class="section-title">5. ¿Contra qué se compara? (línea de base y costo)</h3>
+    <div class="ayuda">
+      Acá definís el <strong>punto de partida</strong>: cómo venía el proceso <em>antes</em> de la mejora.
+      Todo ahorro se calcula como la diferencia entre lo que consumís hoy y esa línea de base.
+      <ul>
+        <li><strong>Valor de la línea de base</strong>: el valor histórico del <em>indicador</em> (no del consumo total).
+            Si antes gastabas 145 kWh por cada tonelada, acá va <code>145</code>.
+            Conviene sacarlo del promedio de los últimos 3–6 meses previos al proyecto.</li>
+        <li><strong>Costo unitario</strong>: cuánto cuesta <em>una unidad de lo que medís en el numerador</em>.
+            Si el indicador está en kWh/ton, va el precio del kWh. Si está en kg/ton de merma, va el
+            precio del kg de fibra.</li>
+        <li><strong>Sentido de la mejora</strong>: si bajar el indicador es bueno (consumos, mermas), dejá
+            la primera opción. Si <em>subir</em> es bueno (rendimiento, OEE, o toneladas sustituidas
+            en un reemplazo de insumo), elegí la segunda.</li>
+      </ul>
+      <strong>¿Costo fijo o variable?</strong> Si el precio del insumo se mantiene estable, usá "Monto
+      fijo". Pero si el precio <em>cambia mes a mes</em> (gas, energía, un químico con precio dolarizado)
+      y vos medís <em>eficiencia física</em> (m3/ton, kWh/ton) — no plata — usá <strong>"Variable declarada
+      arriba"</strong>: agregá una variable extra en el punto 3 (ej. <code>precio_gas</code>) que cargues
+      cada período junto con los demás datos, y elegila acá. Así cada mes queda valuado a SU PROPIO
+      precio real — si editás el costo de un proyecto con monto fijo, se recalcula TODO el histórico con
+      el precio de hoy, distorsionando meses anteriores; con costo variable eso no pasa, porque cada
+      período ya tiene su propio precio guardado.
+      <br><br>
+      <strong>Para el caso de sustitución de insumo</strong> (fórmula = <code>ton_sustituidas</code>):
+      línea de base = <code>0</code> (antes del proyecto, 0 toneladas se sustituían), costo unitario
+      = la <em>diferencia de precio por tonelada</em> entre el insumo viejo y el nuevo, y sentido de
+      la mejora = "más alto es mejor" (más toneladas sustituidas = más ahorro).
+      <br><br>
+      <strong>Para el caso de reducción de viajes de transporte</strong> (fórmula = <code>viajes / ton</code>):
+      línea de base = <code>1 / capacidad_del_camión_viejo</code>. Ejemplo: si el camión viejo cargaba
+      20 toneladas por viaje, la base es <code>1/20 = 0.05</code> viajes por tonelada. Costo unitario
+      = el costo de un viaje en $. Cada vez que cargues <code>ton</code> (toneladas enviadas) y
+      <code>viajes</code> (viajes reales de esa semana), la app calcula solos los "viajes que se
+      hubieran necesitado con el camión viejo" y te da el ahorro en pesos — sin que tengas que
+      calcularlo vos a mano.
+    </div>
+    <div class="row-2">
+      <div>
+        <label>Valor del indicador ANTES de la mejora</label>
+        <input type="number" step="any" id="valor_base_indicador" required placeholder="Ej: 145">
+      </div>
+      <div>
+        <label>¿Costo fijo o variable?</label>
+        <select id="costo_unitario_modo">
+          <option value="fijo" selected>Monto fijo ($)</option>
+          <option value="variable">Variable declarada arriba (se carga cada período)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row-3" id="fila-costo-fijo">
+      <div>
+        <label>Costo por unidad del indicador ($)</label>
+        <input type="number" step="any" id="costo_unitario" placeholder="Ej: 120">
+      </div>
+      <div>
+        <label>Unidad del costo</label>
+        <input type="text" id="unidad_costo" placeholder="Ej: $/kWh">
+      </div>
+    </div>
+    <div class="row-2" id="fila-costo-variable" style="display:none">
+      <div>
+        <label>¿Cuál de las variables declaradas es el precio?</label>
+        <select id="costo_unitario_variable"><option value="">— Declará variables en el punto 3 —</option></select>
+        <div class="hint">Se va a pedir cada vez que cargues una medición, junto con las demás variables.</div>
+      </div>
+      <div>
+        <label>Unidad del costo</label>
+        <input type="text" id="unidad_costo" placeholder="Ej: USD/m3">
+      </div>
+    </div>
+    <div>
+      <label>Sentido de la mejora</label>
+      <select id="menor_es_mejor">
+        <option value="true" selected>Un indicador MÁS BAJO es mejor (consumo, merma, energía, químicos)</option>
+        <option value="false">Un indicador MÁS ALTO es mejor (rendimiento, OEE, disponibilidad)</option>
+      </select>
+    </div>
+
+    <h3 class="section-title">6. Verificá el cálculo antes de guardar</h3>
+    <div class="ayuda">
+      Escribí valores de prueba (los de una semana típica) y comprobá que el resultado tenga sentido.
+      Si acá aparece un número raro, algo está mal configurado más arriba.
+    </div>
+    <div id="preview-inputs" class="row-3"></div>
+    <div id="preview-resultado" class="preview-box">Completá las variables, la fórmula y la línea de base para ver la simulación.</div>
+
+    <button type="submit" id="btn-guardar">Crear proyecto</button>
+  </form>
+</main>
+
+<footer class="footer">Papelera del Sur · Planta Tornquist · TPM / Mejora Enfocada</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/common.js"></script>
+<script src="js/formula.js"></script>
+<script src="js/nuevo.js"></script>
+</body>
+</html>
