@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuevo análisis · Causa Raíz Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+<script src="assets/personas.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/arbol.js"></script>
+<script src="assets/app.js"></script>
+<script>pintarNav('nuevo')</script>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>De "pasó esto" a "esto hay que hacer"</h1>
+    <p>Contá lo que pasó. El sistema elige la herramienta según el tiempo de parada y el tipo de falla,
+       te guía hasta la causa raíz y arma el plan de acción.</p>
+  </div>
+
+  <div class="steps" id="stepsBar"></div>
+
+  <!-- PASO 0 -->
+  <div class="card panel" data-step="0">
+    <h2>1. ¿Qué pasó?</h2>
+    <p class="sub">Con estos datos el sistema define cuánta profundidad necesita el análisis.</p>
+
+    <div class="grid3">
+      <div class="field"><label>Fecha del evento *</label><input type="date" id="f_fecha"></div>
+      <div class="field"><label>Turno</label><select id="f_turno"></select></div>
+      <div class="field"><label>Tiempo de parada (min) *</label><input type="number" id="f_tiempo" min="0" value="0"></div>
+    </div>
+
+    <div class="grid3">
+      <div class="field"><label>Área *</label><select id="f_area" onchange="cargarSubareas()"></select></div>
+      <div class="field"><label>Subárea / equipo *</label>
+        <select id="f_subarea" disabled onchange="cargarEquipos()"><option value="">Primero elegí el área</option></select></div>
+      <div class="field"><label>Equipo específico</label>
+        <select id="f_equipo" disabled><option value="">Primero elegí la subárea</option></select></div>
+    </div>
+
+    <div class="grid2">
+      <div class="field"><label>¿Quién hace el análisis? *</label><select id="f_analista"></select></div>
+      <div class="field"><label>Tipo de falla *</label><select id="f_tipofalla"></select>
+        <div class="hint">Cortes de papel, calidad y servicios exigen análisis intermedio aunque la parada haya sido corta.</div></div>
+    </div>
+
+    <div class="field"><label>Participantes del análisis</label>
+      <div class="hint" style="margin:0 0 7px">Un análisis con operador + mantenimiento vale mucho más que uno solo.</div>
+      <div style="display:flex;gap:8px;margin-bottom:9px">
+        <select id="p_sel" style="flex:1"></select>
+        <button type="button" class="btn ghost small" onclick="addParticipante()">+ Agregar</button>
+      </div>
+      <div id="participantes_chips" style="display:flex;gap:7px;flex-wrap:wrap"></div>
+    </div>
+
+    <div class="field"><label>Descripción de lo que pasó *</label>
+      <textarea id="f_desc" placeholder="Ej: corte de hoja recurrente en la salida de secadores, siempre en el mismo punto"></textarea></div>
+
+    <div class="field"><label>¿Hubo riesgo para una persona? *</label>
+      <select id="f_riesgo"><option value="no">No</option><option value="si">Sí</option></select></div>
+
+    <div class="field"><label>¿Es la primera vez o ya pasó antes? *</label>
+      <div class="opts" id="opt_recurrencia">
+        <label class="opt"><input type="radio" name="recurrencia" value="primera"><div><div class="t">Primera vez</div><div class="d">No recuerdo que haya pasado antes</div></div></label>
+        <label class="opt"><input type="radio" name="recurrencia" value="repetido"><div><div class="t">Se repitió un par de veces</div><div class="d">Pasó 2 o 3 veces en el último tiempo</div></div></label>
+        <label class="opt"><input type="radio" name="recurrencia" value="cronico"><div><div class="t">Es crónico</div><div class="d">Pasa seguido, ya lo tomamos como normal</div></div></label>
+      </div></div>
+
+    <div class="field"><label>¿Qué tan claro tenés el motivo? *</label>
+      <div class="opts" id="opt_certeza">
+        <label class="opt"><input type="radio" name="certeza" value="claro"><div><div class="t">Bastante claro</div><div class="d">Tengo una idea firme de por qué pasó</div></div></label>
+        <label class="opt"><input type="radio" name="certeza" value="dudoso"><div><div class="t">Tengo una idea, pero no estoy seguro</div><div class="d">Puede ser eso, pero no lo aseguro</div></div></label>
+        <label class="opt"><input type="radio" name="certeza" value="ninguno"><div><div class="t">No tengo idea</div><div class="d">Puede ser cualquier cosa</div></div></label>
+      </div></div>
+
+    <div class="btnrow"><span></span><button class="btn primary" onclick="hacerTriage()">Analizar →</button></div>
+  </div>
+
+  <!-- PASO 1 -->
+  <div class="card panel hidden" data-step="1">
+    <h2>2. Camino recomendado</h2>
+    <p class="sub">El sistema eligió la profundidad según lo que cargaste. Podés cambiarlo si tenés otro criterio.</p>
+    <div id="triageResult"></div>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="irPaso(0)">← Volver</button>
+      <button class="btn primary" onclick="irPaso(S.camino==='A'?4:2)">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- PASO 2 -->
+  <div class="card panel hidden" data-step="2">
+    <h2>3. Ordenemos los hechos (5W + 1H)</h2>
+    <p class="sub">Antes de preguntar "por qué", dejemos clara la situación. Un problema mal definido hace perder horas.</p>
+    <div class="field"><label>¿Qué pasó exactamente? (What)</label><textarea id="w_que"></textarea>
+      <div class="hint">Describí el hecho observable, sin opinar sobre la causa todavía.</div></div>
+    <div class="grid2">
+      <div class="field"><label>¿Quién estaba involucrado? (Who)</label><input type="text" id="w_quien" placeholder="Turno, puesto, sector"></div>
+      <div class="field"><label>¿Cuándo ocurrió? (When)</label><input type="text" id="w_cuando" placeholder="Horario, después de qué"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>¿Dónde ocurrió? (Where)</label><input type="text" id="w_donde" placeholder="Punto exacto del equipo"></div>
+      <div class="field"><label>¿Cómo se detectó? (How)</label><input type="text" id="w_como" placeholder="Inspección, alarma, reclamo"></div>
+    </div>
+    <div class="field"><label>¿Por qué es un problema? (impacto, no la causa)</label><textarea id="w_porque" placeholder="Ej: genera reproceso, para la línea"></textarea></div>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="irPaso(1)">← Volver</button>
+      <button class="btn primary" onclick="irPaso(S.camino==='C'?3:4)">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- PASO 3 -->
+  <div class="card panel hidden" data-step="3">
+    <h2>4. Espina de pescado (6M)</h2>
+    <p class="sub">Mapeá en qué categorías podría estar la causa. <b>Tildá las 2 o 3 más probables</b> — esas pasan a los 5 Porqués.</p>
+    <div class="fish-grid" id="fishGrid"></div>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="irPaso(2)">← Volver</button>
+      <button class="btn primary" onclick="siguienteDesdeFish()">Continuar con lo tildado →</button>
+    </div>
+  </div>
+
+  <!-- PASO 4 -->
+  <div class="card panel hidden" data-step="4">
+    <h2>5. Los 5 Porqués</h2>
+    <p class="sub">Preguntá "¿por qué?" hasta llegar a algo sobre lo que puedas <b>actuar</b>.
+       Si en el 2do o 3ro ya llegaste, apretá "Es la causa raíz" — no hay que llegar a 5 por obligación.</p>
+    <div id="whyChains"></div>
+    <button class="btn ghost small" onclick="addChain('')">+ Agregar otra cadena</button>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="irPaso(S.camino==='A'?1:(S.camino==='C'?3:2))">← Volver</button>
+      <button class="btn primary" onclick="siguienteDesdeWhy()">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- PASO 5 -->
+  <div class="card panel hidden" data-step="5">
+    <h2>6. Contramedida inmediata</h2>
+    <p class="sub">Antes de pensar cómo evitar que vuelva: <b>¿qué se hizo para restaurar la condición?</b>
+       TPM separa restaurar de prevenir — sin esto el caso queda a medias.</p>
+    <div class="field"><label>¿Qué se hizo para que el equipo vuelva a funcionar? *</label>
+      <textarea id="c_inmediata" placeholder="Ej: se cambió el rodamiento y se realineó. Duración: 40 min."></textarea>
+      <div class="hint">Esto NO es la solución de fondo — es la restauración. La de fondo viene después.</div></div>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="irPaso(4)">← Volver</button>
+      <button class="btn primary" onclick="validarInmediata()">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- PASO 6 -->
+  <div class="card panel hidden" data-step="6">
+    <h2>7. ¿Qué tipo de causa raíz es?</h2>
+    <p class="sub">Marcá una o más. De acá sale el plan de acción — elegí lo que más se parezca a lo que encontraste.</p>
+    <div class="tagcloud" id="tagCloud"></div>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="irPaso(5)">← Volver</button>
+      <button class="btn primary" onclick="generarSoluciones()">Ver plan de acción →</button>
+    </div>
+  </div>
+
+  <!-- PASO 7 -->
+  <div class="card panel hidden" data-step="7">
+    <h2>8. Plan de acción y tarjetas</h2>
+    <p class="sub">Tildá las acciones que vas a llevar adelante y asigná responsable.
+       Cada acción tildada genera una tarjeta TPM o EHS desde el seguimiento.</p>
+    <div id="solPack"></div>
+    <div class="field" style="margin-top:18px">
+      <label>Expansión horizontal (P7) — ¿dónde más de la planta puede pasar esto?</label>
+      <textarea id="c_expansion" placeholder="Ej: la misma configuración está en la 2ª batería y en prensas — revisar ambas"></textarea>
+      <div class="hint">Este paso multiplica el valor: resolver el problema una vez en toda la planta, no solo donde apareció.</div>
+    </div>
+    <div class="btnrow">
+      <button class="btn ghost" onclick="irPaso(6)">← Volver</button>
+      <button class="btn green" id="btnGuardar" onclick="guardarCaso()">Guardar caso ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let S = {camino:'B', caminoManual:false, motivos:[], fish:{}, chains:[], tags:[], acciones:[]};
+CAT_ISHIKAWA.forEach(c=> S.fish[c.key]=[]);
+
+/* ---------- poblar selects ---------- */
+(function init(){
+  document.getElementById('f_fecha').value = hoyISO();
+  document.getElementById('f_turno').innerHTML =
+    '<option value="">—</option>' + TURNOS.map(t=>`<option>${esc(t)}</option>`).join('');
+  document.getElementById('f_area').innerHTML =
+    '<option value="">Elegir área...</option>' +
+    listaAreas().map(a=>`<option value="${esc(a)}">${esc(ARBOL[a].c)} · ${esc(a)}</option>`).join('');
+  document.getElementById('f_analista').innerHTML = opcionesPersonasAgrupadas('Elegir persona...');
+  document.getElementById('f_tipofalla').innerHTML =
+    '<option value="">Elegir tipo...</option>' + TIPOS_FALLA.map(t=>`<option value="${t.key}">${esc(t.label)}</option>`).join('');
+  document.getElementById('p_sel').innerHTML = opcionesPersonasAgrupadas('Elegir participante...');
+  document.getElementById('tagCloud').innerHTML = CATEGORIAS_CAUSA.map(c=>`
+    <label class="tagopt" data-key="${c.key}">
+      <input type="checkbox" style="margin-top:2px"
+             onchange="this.closest('.tagopt').classList.toggle('checked',this.checked)">
+      <div><div class="t">${esc(c.titulo)}</div><div class="p">${esc(c.ayuda)}</div></div></label>`).join('');
+  document.querySelectorAll('input[name=recurrencia],input[name=certeza]').forEach(r=>{
+    r.addEventListener('change',()=>{
+      document.querySelectorAll('#opt_recurrencia .opt,#opt_certeza .opt').forEach(o=>o.classList.remove('checked'));
+      document.querySelectorAll('input[name=recurrencia]:checked,input[name=certeza]:checked')
+        .forEach(x=>x.closest('.opt').classList.add('checked'));
+    });
+  });
+  irPaso(0);
+})();
+
+/* ---------- participantes ---------- */
+let PARTICIPANTES = [];
+function addParticipante(){
+  const v = document.getElementById('p_sel').value;
+  if(!v || PARTICIPANTES.includes(v)) return;
+  PARTICIPANTES.push(v);
+  document.getElementById('p_sel').value='';
+  renderParticipantes();
+}
+function quitarParticipante(i){ PARTICIPANTES.splice(i,1); renderParticipantes(); }
+function renderParticipantes(){
+  document.getElementById('participantes_chips').innerHTML = PARTICIPANTES.map((p,i)=>
+    `<span class="badge-s g" style="display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:11.5px">
+       ${esc(p)} <span style="cursor:pointer;opacity:.6" onclick="quitarParticipante(${i})">✕</span></span>`).join('')
+    || '<span style="font-size:11.5px;color:var(--muted)">Nadie agregado todavía</span>';
+}
+
+/* ---------- cascada ---------- */
+function cargarSubareas(){
+  const area=document.getElementById('f_area').value;
+  const sub=document.getElementById('f_subarea'), eq=document.getElementById('f_equipo');
+  eq.innerHTML='<option value="">Primero elegí la subárea</option>'; eq.disabled=true;
+  if(!area||!ARBOL[area]){ sub.disabled=true; sub.innerHTML='<option value="">Primero elegí el área</option>'; return; }
+  const subs=subareasDe(area);
+  sub.innerHTML='<option value="">Elegir subárea...</option>' +
+    Object.keys(subs).map(k=>`<option value="${esc(k)}">${esc(subs[k].c)} · ${esc(k)}</option>`).join('');
+  sub.disabled=false;
+}
+function cargarEquipos(){
+  const area=document.getElementById('f_area').value, subv=document.getElementById('f_subarea').value;
+  const eq=document.getElementById('f_equipo');
+  if(!area||!subv){ eq.innerHTML='<option value="">Primero elegí la subárea</option>'; eq.disabled=true; return; }
+  const equipos=equiposDe(area,subv);
+  if(!equipos.length){
+    eq.innerHTML='<option value="">— la subárea es el equipo —</option>'; eq.disabled=true; return;
+  }
+  eq.innerHTML='<option value="">— (opcional) —</option>' +
+    equipos.map(([c,n])=>`<option value="${esc(n)}" data-cod="${esc(c)}">${esc(c)} · ${esc(n)}</option>`).join('');
+  eq.disabled=false;
+}
+
+/* ---------- stepper ---------- */
+const LABELS={0:'Datos',1:'Camino',2:'5W1H',3:'Espina',4:'5 Porqués',5:'Inmediata',6:'Clasificar',7:'Plan'};
+function pasosDe(c){ return c==='A'?[0,1,4,5,6,7] : c==='B'?[0,1,2,4,5,6,7] : [0,1,2,3,4,5,6,7]; }
+function irPaso(n){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('hidden', +p.dataset.step!==n));
+  const orden=pasosDe(S.camino);
+  document.getElementById('stepsBar').innerHTML = orden.map((s,i)=>{
+    let cls='step-dot';
+    if(orden.indexOf(n)>i) cls+=' done';
+    if(s===n) cls+=' now';
+    return `<div class="${cls}"><span class="n">${i+1}</span>${LABELS[s]}</div>`;
+  }).join('');
+  if(n===3) renderFish();
+  if(n===4) renderChains();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- triage ---------- */
+function hacerTriage(){
+  for(const id of ['f_fecha','f_area','f_subarea','f_analista','f_tipofalla','f_desc']){
+    if(!document.getElementById(id).value.trim()){
+      alert('Faltan datos obligatorios (marcados con *).'); document.getElementById(id).focus(); return; }
+  }
+  const rec=document.querySelector('input[name=recurrencia]:checked');
+  const cer=document.querySelector('input[name=certeza]:checked');
+  if(!rec||!cer){ alert('Marcá la recurrencia y la certeza de la causa.'); return; }
+
+  const r = calcularCamino(document.getElementById('f_tiempo').value,
+      document.getElementById('f_riesgo').value, rec.value, cer.value,
+      document.getElementById('f_tipofalla').value);
+  S.camino=r.camino; S.motivos=r.motivos; S.caminoManual=false;
+
+  const desc=document.getElementById('f_desc').value;
+  if(!S.chains.length){ addChain(desc,true); S.chains[0].auto=true; }
+  else if(S.chains[0].auto){ S.chains[0].inicio=desc; }
+  pintarTriage(); irPaso(1);
+}
+function pintarTriage(){
+  const p=PATHS[S.camino];
+  document.getElementById('triageResult').innerHTML=`
+    <div class="pathcard">
+      <div class="ptag">${p.tag}${S.caminoManual?' · elegido manualmente':' · recomendado'}</div>
+      <h3>${p.title}</h3><p>${p.desc}</p>
+      ${(!S.caminoManual&&S.motivos.length)?`<ul class="motivos">${S.motivos.map(m=>`<li>${esc(m)}</li>`).join('')}</ul>`:''}
+    </div>
+    <div class="path-switch">${['A','B','C'].map(k=>
+      `<button type="button" class="pswitch ${k===S.camino?'active':''}" onclick="forzarCamino('${k}')">${PATHS[k].title}</button>`).join('')}</div>`;
+}
+function forzarCamino(k){ S.camino=k; S.caminoManual=true; pintarTriage(); }
+
+/* ---------- ishikawa ---------- */
+function renderFish(){
+  document.getElementById('fishGrid').innerHTML = CAT_ISHIKAWA.map(c=>`
+    <div class="fish-cat"><h4><span class="d"></span>${esc(c.label)}</h4>
+      <p class="fh">${esc(c.ayuda)}</p>
+      <div class="fish-add">
+        <input type="text" id="fi_${c.key}" placeholder="Posible causa..."
+               onkeydown="if(event.key==='Enter'){event.preventDefault();addFish('${c.key}')}">
+        <button type="button" onclick="addFish('${c.key}')">+</button></div>
+      <div class="fish-items" id="fl_${c.key}"></div></div>`).join('');
+  CAT_ISHIKAWA.forEach(c=>renderFishList(c.key));
+}
+function addFish(k){
+  const i=document.getElementById('fi_'+k);
+  if(!i.value.trim()) return;
+  S.fish[k].push({text:i.value.trim(),checked:false}); i.value=''; renderFishList(k);
+}
+function renderFishList(k){
+  document.getElementById('fl_'+k).innerHTML = S.fish[k].map((it,i)=>`
+    <label class="fish-item">
+      <input type="checkbox" ${it.checked?'checked':''} onchange="S.fish['${k}'][${i}].checked=this.checked">
+      <span>${esc(it.text)}</span>
+      <span class="x" onclick="S.fish['${k}'].splice(${i},1);renderFishList('${k}')">✕</span></label>`).join('')
+    || '<div class="fish-empty">Sin ítems todavía</div>';
+}
+function siguienteDesdeFish(){
+  const m=[];
+  CAT_ISHIKAWA.forEach(c=> S.fish[c.key].forEach(it=>{ if(it.checked) m.push(it.text); }));
+  if(!m.length && !confirm('No tildaste ninguna causa probable. ¿Seguir igual con la cadena original?')) return;
+  m.forEach(x=>{ if(!S.chains.some(c=>c.inicio===x)) addChain(x,true); });
+  irPaso(4);
+}
+
+/* ---------- 5 porqués ---------- */
+function addChain(inicio,silent){
+  S.chains.push({inicio:inicio||'',whys:['','','','',''],stop:null,auto:false,culpa:[false,false,false,false,false]});
+  if(!silent) renderChains();
+}
+function renderChains(){
+  document.getElementById('whyChains').innerHTML = S.chains.map((ch,ci)=>`
+    <div class="chain">
+      <div class="field" style="margin-bottom:12px"><label>Punto de partida de esta cadena</label>
+        <input type="text" value="${esc(ch.inicio)}" onchange="S.chains[${ci}].inicio=this.value"></div>
+      ${[0,1,2,3,4].map(wi=>{
+        if(ch.stop!==null && wi>ch.stop) return '';
+        return `<div class="why-row"><div class="why-n">${wi+1}</div>
+          <textarea onchange="setWhy(${ci},${wi},this.value)" placeholder="¿Por qué?">${esc(ch.whys[wi])}</textarea></div>
+        ${ch.culpa[wi]?`<div class="alerta-culpa"><b>⚠ Cuidado: eso todavía no es una causa raíz.</b>
+          Culpar a una persona cierra el análisis antes de tiempo. Preguntate: <b>¿por qué fue posible que eso pasara?</b>
+          ¿Faltaba un estándar, una señal visual, un entrenamiento, o el equipo permitía el error?</div>`:''}
+        ${ch.stop===wi?`<div class="why-stop">✓ Causa raíz identificada en el porqué #${wi+1}</div>`
+          :(ch.stop===null?`<button type="button" class="btn ghost small" style="margin:0 0 12px 40px"
+              onclick="pararCadena(${ci},${wi})">✓ Es la causa raíz — parar acá</button>`:'')}`;
+      }).join('')}
+      ${S.chains.length>1?`<button type="button" class="btn danger small" onclick="S.chains.splice(${ci},1);renderChains()">Eliminar cadena</button>`:''}
+    </div>`).join('');
+}
+function setWhy(ci,wi,val){
+  S.chains[ci].whys[wi]=val;
+  S.chains[ci].culpa[wi]=detectarCulpa(val);
+  renderChains();
+}
+function pararCadena(ci,wi){
+  const ch=S.chains[ci];
+  if(!ch.whys[wi].trim()){ alert('Escribí el porqué antes de marcarlo como causa raíz.'); return; }
+  if(ch.culpa[wi] && !confirm('Este porqué apunta a una persona, no al sistema. En TPM eso casi nunca es la causa raíz real.\n\n¿Seguro querés cerrar la cadena acá?')) return;
+  ch.stop=wi; renderChains();
+}
+function siguienteDesdeWhy(){
+  if(!S.chains.some(c=>c.stop!==null)){
+    alert('Marcá al menos una causa raíz con el botón "Es la causa raíz" antes de continuar.'); return; }
+  irPaso(5);
+}
+function validarInmediata(){
+  if(!val('c_inmediata').trim()){
+    alert('Cargá qué se hizo para restaurar la condición. Separar restauración de prevención es lo que evita que el caso quede a medias.');
+    document.getElementById('c_inmediata').focus(); return; }
+  irPaso(6);
+}
+
+/* ---------- soluciones ---------- */
+function generarSoluciones(){
+  const sel=[...document.querySelectorAll('#tagCloud .tagopt')]
+    .filter(e=>e.querySelector('input').checked).map(e=>e.dataset.key);
+  if(!sel.length){ alert('Marcá al menos un tipo de causa raíz.'); return; }
+  S.tags=sel; S.acciones=[];
+  const defF=sumarDias(14);
+  document.getElementById('solPack').innerHTML = sel.map(k=>{
+    const c=CATEGORIAS_CAUSA.find(x=>x.key===k);
+    const rows=c.acciones.map(a=>{
+      const i=S.acciones.length;
+      S.acciones.push({texto:a,pilar:c.pilar,categoria:c.key,destino:c.destino,color:c.color,
+                       responsable:'',fecha_compromiso:defF,elegida:false});
+      return `<div class="accrow">
+        <input type="checkbox" onchange="S.acciones[${i}].elegida=this.checked;document.getElementById('am_${i}').style.display=this.checked?'grid':'none'">
+        <div style="flex:1"><div class="atext">${esc(a)} <span class="destino-chip ${c.destino}">${c.destino}</span></div>
+        <div class="accmeta" id="am_${i}" style="display:none">
+          <select onchange="S.acciones[${i}].responsable=this.value"><option value="">Responsable...</option>
+            ${opcionesPersonasAgrupadas('Responsable...').replace(/^<option value="">[^<]*<\/option>/,'')}</select>
+          <input type="date" value="${defF}" onchange="S.acciones[${i}].fecha_compromiso=this.value">
+        </div></div></div>`;
+    }).join('');
+    return `<div class="solblock">
+      <span class="pilar ${c.destino==='EHS'?'ehs':''}">${esc(c.pilar)}</span>
+      <h4>${esc(c.titulo)}</h4>${rows}
+      <div class="acc-custom">
+        <input type="text" id="cu_${k}" placeholder="Agregar una acción propia...">
+        <button type="button" class="btn ghost small" onclick="addCustom('${k}')">+</button></div>
+      <div id="cl_${k}"></div></div>`;
+  }).join('');
+  irPaso(7);
+}
+function addCustom(k){
+  const inp=document.getElementById('cu_'+k); if(!inp.value.trim()) return;
+  const c=CATEGORIAS_CAUSA.find(x=>x.key===k), defF=sumarDias(14), i=S.acciones.length;
+  S.acciones.push({texto:inp.value.trim(),pilar:c.pilar,categoria:k,destino:c.destino,color:c.color,
+                   responsable:'',fecha_compromiso:defF,elegida:true});
+  document.getElementById('cl_'+k).insertAdjacentHTML('beforeend',
+    `<div class="accrow"><input type="checkbox" checked onchange="S.acciones[${i}].elegida=this.checked">
+     <div style="flex:1"><div class="atext">${esc(inp.value.trim())} <span class="destino-chip ${c.destino}">${c.destino}</span></div>
+     <div class="accmeta" style="display:grid">
+       <select onchange="S.acciones[${i}].responsable=this.value"><option value="">Responsable...</option>
+         ${opcionesPersonasAgrupadas('Responsable...').replace(/^<option value="">[^<]*<\/option>/,'')}</select>
+       <input type="date" value="${defF}" onchange="S.acciones[${i}].fecha_compromiso=this.value">
+     </div></div></div>`);
+  inp.value='';
+}
+
+/* ---------- guardar ---------- */
+function val(id){ const e=document.getElementById(id); return e?e.value:''; }
+async function guardarCaso(){
+  const elegidas=S.acciones.filter(a=>a.elegida);
+  if(!elegidas.length && !confirm('No tildaste ninguna acción. ¿Guardar el caso igual, sin plan?')) return;
+
+  const eqSel=document.getElementById('f_equipo').selectedOptions[0];
+  const eqCod=eqSel?(eqSel.dataset.cod||''):'';
+  const area=val('f_area'), subarea=val('f_subarea');
+
+  const caso={
+    fecha_evento:val('f_fecha'), turno:val('f_turno'),
+    area, subarea, equipo:val('f_equipo'), equipo_cod:eqCod,
+    codigo_ubicacion:rutaCodigo(area,subarea,eqCod),
+    analista:val('f_analista'),
+    participantes:PARTICIPANTES.slice(),
+    descripcion:val('f_desc'), tipo_falla:val('f_tipofalla'),
+    tiempo_parada:parseInt(val('f_tiempo'))||0, riesgo_personas:val('f_riesgo'),
+    recurrencia:(document.querySelector('input[name=recurrencia]:checked')||{}).value||'',
+    certeza:(document.querySelector('input[name=certeza]:checked')||{}).value||'',
+    camino:S.camino, camino_manual:S.caminoManual, motivo_camino:S.motivos,
+    w1h:{que:val('w_que'),quien:val('w_quien'),cuando:val('w_cuando'),
+         donde:val('w_donde'),como:val('w_como'),porque:val('w_porque')},
+    ishikawa:S.fish, porques:S.chains, categorias:S.tags,
+    causa_raiz_resumen:S.chains.filter(c=>c.stop!==null).map(c=>c.whys[c.stop]).join(' · '),
+    contramedida_inmediata:val('c_inmediata'),
+    expansion_horizontal:val('c_expansion'),
+    acciones:elegidas, estado:'Abierto'
+  };
+
+  const btn=document.getElementById('btnGuardar');
+  btn.disabled=true; btn.textContent='Guardando...';
+  try{
+    const g=await DB.crear(caso);
+    location.href='seguimiento.html?id='+encodeURIComponent(g.id);
+  }catch(e){
+    alert('No se pudo guardar: '+e.message);
+    btn.disabled=false; btn.textContent='Guardar caso ✓';
+  }
+}
+</script>
+<script>pintarFooter()</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Análisis de Causa Raíz · Planta Tornquist</title>
+<title>Cómo funciona · Causa Raíz Tornquist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/estilo.css">
@@ -13,36 +13,28 @@
 <script src="assets/config.js"></script>
 <script src="assets/arbol.js"></script>
 <script src="assets/app.js"></script>
-<script>pintarNav('inicio')</script>
+<script>pintarNav('como')</script>
 
 <div class="wrap">
-
-  <div class="portada-hero">
-    <div class="tag">MEJORA CONTINUA · KOBETSU KAIZEN</div>
-    <h1>Hacer fácil lo difícil: encontrar la causa raíz</h1>
-    <p>No hace falta ser experto en metodología. Contá qué pasó y el sistema elige la herramienta,
-       te guía paso a paso y arma el plan de acción con tarjetas TPM o EHS.</p>
+  <div class="hero">
+    <h1>Cómo funciona el sistema</h1>
+    <p>La misma guía en un solo lugar, para revisar cuando tengas dudas mientras hacés un análisis.
+       De "pasó esto" a "esto hay que hacer", paso a paso.</p>
   </div>
 
-  <div class="acc-grid">
-    <a class="acc-card" href="analisis.html">
-      <div class="ic">＋</div>
-      <h3>Nuevo análisis</h3>
-      <p>Cargá el evento. El sistema define si alcanza con 5 Porqués o si hace falta el análisis completo.</p>
-    </a>
-    <a class="acc-card g" href="seguimiento.html">
-      <div class="ic">☑</div>
-      <h3>Seguimiento</h3>
-      <p>Historial de casos, estado de las acciones, tarjetas vinculadas y verificación de resultados.</p>
-    </a>
+  <div class="pasos-rapidos">
+    <div class="paso-mini"><div class="pn">1-2</div><div class="pt">Contás qué pasó</div>
+      <div class="pd">Datos básicos: área, equipo, tiempo de parada, tipo de falla</div></div>
+    <div class="paso-mini"><div class="pn">3</div><div class="pt">El sistema elige el camino</div>
+      <div class="pd">Corto, intermedio o completo, según la tabla de abajo</div></div>
+    <div class="paso-mini"><div class="pn">4-5</div><div class="pt">Herramientas guiadas</div>
+      <div class="pd">5W1H, Espina de pescado y/o 5 Porqués, según el camino</div></div>
+    <div class="paso-mini"><div class="pn">6-8</div><div class="pt">Plan y cierre</div>
+      <div class="pd">Contramedida, tarjeta TPM/EHS, expansión y verificación</div></div>
   </div>
 
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <h2 style="margin:0">Cómo elige la herramienta</h2>
-      <a class="btn ghost small" href="como-funciona.html">Ver diagrama completo →</a>
-    </div>
-    <div style="height:8px"></div>
+    <h2>Cómo elige la herramienta</h2>
     <p class="sub">No todos los problemas merecen el mismo esfuerzo. El objetivo es llegar a la causa raíz
        lo más rápido posible, sin quedarse corto en los casos graves.</p>
     <table class="camino-tabla">
@@ -68,13 +60,39 @@
   </div>
 
   <div class="card">
-    <h2>Qué hace distinto a este análisis</h2>
+    <h2>El diagrama completo</h2>
+    <p class="sub">El mismo flujo, de punta a punta. Podés hacer zoom (Ctrl + rueda, o pellizcar en el celular)
+       o descargarlo para imprimir y pegar en el sector.</p>
+    <div class="diagrama-frame">
+      <img src="assets/flujo.svg" alt="Diagrama de flujo: cómo funciona el análisis de causa raíz">
+    </div>
+    <div class="diagrama-actions">
+      <a class="btn ghost small" href="assets/flujo.svg" download="flujo_causa_raiz.svg">⬇ Descargar SVG (para imprimir)</a>
+      <a class="btn ghost small" href="assets/flujo.svg" target="_blank">↗ Abrir en pestaña completa</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Lo que hace distinto a este análisis</h2>
     <div class="kv" style="gap:16px">
       <div><b>Separa restaurar de prevenir</b>Cargás la contramedida inmediata aparte de la solución de fondo. Sin eso, se arregla y se olvida.</div>
       <div><b>No deja culpar a la persona</b>Si un porqué dice "error del operario", el sistema avisa y te hace seguir preguntando.</div>
       <div><b>Cierra el ciclo</b>El caso no se cierra por hacer las acciones, sino por verificar que el problema dejó de repetirse.</div>
       <div><b>Expande horizontalmente</b>Pregunta dónde más de la planta puede pasar lo mismo, para resolverlo una sola vez.</div>
     </div>
+  </div>
+
+  <div class="acc-grid">
+    <a class="acc-card" href="analisis.html">
+      <div class="ic">＋</div>
+      <h3>Empezar un análisis</h3>
+      <p>Ya lo tenés claro. Vamos directo al asistente.</p>
+    </a>
+    <a class="acc-card g" href="seguimiento.html">
+      <div class="ic">☑</div>
+      <h3>Ver el historial</h3>
+      <p>Revisar casos ya cargados y su estado.</p>
+    </a>
   </div>
 
 </div>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seguimiento · Causa Raíz Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/estilo.css">
+</head>
+<body>
+<script src="assets/personas.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/arbol.js"></script>
+<script src="assets/app.js"></script>
+<script>pintarNav('hist')</script>
+
+<div class="wrap">
+  <!-- ===== LISTADO ===== -->
+  <div id="vistaLista">
+    <div class="hero">
+      <h1>Seguimiento de análisis</h1>
+      <p>Todos los casos de la planta, con su causa raíz y el estado de las acciones. La memoria de lo que ya resolvimos.</p>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="filters">
+      <select id="fEstado" onchange="pintarLista()">
+        <option value="">Todos los estados</option>
+        <option>Abierto</option><option>En curso</option><option>Cerrado</option>
+      </select>
+      <select id="fArea" onchange="pintarLista()"><option value="">Todas las áreas</option></select>
+      <select id="fVenc" onchange="pintarLista()">
+        <option value="">Todas las acciones</option>
+        <option value="vencida">Solo con acciones vencidas</option>
+        <option value="por_vencer">Solo por vencer (≤3 días)</option>
+      </select>
+      <div class="barra-acciones">
+        <button class="btn ghost small" onclick="exportar()">⬇ Exportar CSV</button>
+      </div>
+    </div>
+    <div id="lista"></div>
+  </div>
+
+  <!-- ===== DETALLE ===== -->
+  <div id="vistaDetalle" class="hidden"></div>
+</div>
+
+<script>
+let CASOS=[], ACTUAL=null;
+
+async function cargar(){
+  try{ CASOS = await DB.listar(); }
+  catch(e){ CASOS=[]; toast('No se pudo leer: '+e.message, 5000); }
+  document.getElementById('fArea').innerHTML='<option value="">Todas las áreas</option>' +
+    listaAreas().map(a=>`<option>${esc(a)}</option>`).join('');
+  const id=new URLSearchParams(location.search).get('id');
+  if(id) verDetalle(id); else pintarLista();
+}
+
+/* ================= LISTADO ================= */
+function pintarLista(){
+  document.getElementById('vistaLista').classList.remove('hidden');
+  document.getElementById('vistaDetalle').classList.add('hidden');
+  const fe=document.getElementById('fEstado').value, fa=document.getElementById('fArea').value;
+  const fv=(document.getElementById('fVenc')||{}).value||'';
+  const f = CASOS.filter(c => {
+    if(fe && c.estado!==fe) return false;
+    if(fa && c.area!==fa) return false;
+    if(fv){
+      const r = resumenAcciones(c);
+      if(fv==='vencida' && r.vencidas===0) return false;
+      if(fv==='por_vencer' && r.por_vencer===0) return false;
+    }
+    return true;
+  });
+
+  const hs = CASOS.reduce((s,c)=>s+(+c.tiempo_parada||0),0)/60;
+  const totVenc = CASOS.reduce((s,c)=>s+resumenAcciones(c).vencidas,0);
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="v">${CASOS.length}</div><div class="l">Casos totales</div></div>
+    <div class="kpi"><div class="v" style="color:var(--red-ink)">${CASOS.filter(c=>c.estado==='Abierto').length}</div><div class="l">Abiertos</div></div>
+    <div class="kpi"><div class="v" style="color:var(--amber-ink)">${CASOS.filter(c=>c.estado==='En curso').length}</div><div class="l">En curso</div></div>
+    <div class="kpi"><div class="v" style="color:var(--green-ink)">${CASOS.filter(c=>c.estado==='Cerrado').length}</div><div class="l">Cerrados</div></div>
+    <div class="kpi"><div class="v" style="color:var(--red-ink)">${totVenc}</div><div class="l">Acciones vencidas</div></div>
+    <div class="kpi"><div class="v">${hs.toFixed(1)}</div><div class="l">Horas de parada</div></div>`;
+
+  document.getElementById('lista').innerHTML = f.length ? f.map(c=>{
+    const acc=c.acciones||[], hechas=acc.filter(a=>a.estado==='Hecha').length;
+    const rv = resumenAcciones(c);
+    const cam = c.camino==='A'?'5 Porqués':c.camino==='B'?'5W1H + 5 Porqués':'Análisis completo';
+    return `<a class="hist-item ${rv.vencidas?'tiene-venc':''}" href="?id=${encodeURIComponent(c.id)}">
+      <div class="hist-top"><div>
+        <h3>${esc(c.codigo)} · ${esc(c.area)}${c.subarea?' / '+esc(c.subarea):''}</h3>
+        ${c.codigo_ubicacion?`<div class="meta" style="font-family:monospace">Ubicación ${esc(c.codigo_ubicacion)}</div>`:''}
+        <div class="meta">${esc(c.fecha_evento||'sin fecha')} · ${c.tiempo_parada||0} min · análisis por ${esc(c.analista||'—')}</div>
+      </div><span class="status ${esc((c.estado||'').replace(' ','-'))}">${esc(c.estado)}</span></div>
+      <div class="badges"><span class="badge-s">${cam}</span>
+        <span class="badge-s g">${hechas}/${acc.length} acciones hechas</span>
+        ${rv.vencidas?`<span class="alerta-venc">⚠ ${rv.vencidas} vencida${rv.vencidas>1?'s':''}</span>`:''}
+        ${(!rv.vencidas&&rv.por_vencer)?`<span class="v-badge v-prox">${rv.por_vencer} por vencer</span>`:''}</div>
+      <div class="hist-cause"><b>Causa raíz:</b> ${esc(c.causa_raiz_resumen||'—')}</div></a>`;
+  }).join('') : '<div class="empty">No hay casos con estos filtros. Arrancá uno nuevo desde "Nuevo análisis".</div>';
+}
+
+/* ================= DETALLE ================= */
+function exportar(){
+  const fe=document.getElementById('fEstado').value, fa=document.getElementById('fArea').value;
+  const fv=(document.getElementById('fVenc')||{}).value||'';
+  const f = CASOS.filter(c => {
+    if(fe && c.estado!==fe) return false;
+    if(fa && c.area!==fa) return false;
+    if(fv){ const r=resumenAcciones(c);
+      if(fv==='vencida' && r.vencidas===0) return false;
+      if(fv==='por_vencer' && r.por_vencer===0) return false; }
+    return true;
+  });
+  descargarCSV('causa_raiz_'+new Date().toISOString().slice(0,10)+'.csv', casosACSV(f));
+}
+
+async function verDetalle(id){
+  const c = CASOS.find(x=>String(x.id)===String(id)) || await DB.obtener(id);
+  if(!c){ toast('Caso no encontrado'); pintarLista(); return; }
+  ACTUAL=c;
+  document.getElementById('vistaLista').classList.add('hidden');
+  const d=document.getElementById('vistaDetalle');
+  d.classList.remove('hidden');
+
+  const cam = c.camino==='A'?'Solo 5 Porqués':c.camino==='B'?'5W1H + 5 Porqués':'Análisis completo';
+  const w=c.w1h||{};
+  const ish=c.ishikawa||{};
+  const ishHtml = CAT_ISHIKAWA.map(cat=>{
+    const items=ish[cat.key]||[]; if(!items.length) return '';
+    return `<div><b>${esc(cat.label)}</b>${items.map(i=>(i.checked?'★ ':'· ')+esc(i.text)).join('<br>')}</div>`;
+  }).join('');
+
+  d.innerHTML = `
+    <button class="btn ghost small" onclick="location.href='seguimiento.html'" style="margin-bottom:14px">← Volver al seguimiento</button>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div><h2>${esc(c.codigo)} · ${esc(c.area)}${c.subarea?' / '+esc(c.subarea):''}</h2>
+          <p class="sub" style="margin-bottom:0">${esc(c.descripcion)}</p></div>
+        <select onchange="cambiarCaso({estado:this.value})"
+                style="padding:9px 12px;border-radius:10px;border:1px solid var(--line);font-weight:700;font-size:12.5px">
+          ${['Abierto','En curso','Cerrado'].map(e=>`<option ${c.estado===e?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="dsec"><h3>Datos del caso</h3><div class="kv">
+        <div><b>Fecha</b>${esc(c.fecha_evento||'—')} ${esc(c.turno||'')}</div>
+        <div><b>Equipo</b>${esc(c.equipo||'—')}${c.codigo_ubicacion?` <code>(${esc(c.codigo_ubicacion)})</code>`:''}</div>
+        <div><b>Tiempo de parada</b>${c.tiempo_parada||0} min</div>
+        <div><b>Analista</b>${esc(c.analista||'—')}</div>
+        <div><b>Recurrencia</b>${esc(c.recurrencia||'—')}</div>
+        <div><b>Camino usado</b>${cam}</div>
+      </div></div>
+
+      ${w.que?`<div class="dsec"><h3>5W + 1H</h3><div class="kv">
+        <div><b>Qué</b>${esc(w.que||'—')}</div><div><b>Quién</b>${esc(w.quien||'—')}</div>
+        <div><b>Cuándo</b>${esc(w.cuando||'—')}</div><div><b>Dónde</b>${esc(w.donde||'—')}</div>
+        <div><b>Cómo se detectó</b>${esc(w.como||'—')}</div><div><b>Por qué es un problema</b>${esc(w.porque||'—')}</div>
+      </div></div>`:''}
+
+      ${ishHtml?`<div class="dsec"><h3>Espina de pescado</h3><div class="kv">${ishHtml}</div></div>`:''}
+
+      <div class="dsec"><h3>Cadenas de 5 Porqués</h3>
+        ${(c.porques||[]).map(ch=>`<div class="chainbox">
+          <b>Partida:</b> ${esc(ch.inicio||'—')}<br>
+          ${ch.whys.map((x,i)=>x?`¿Por qué #${i+1}? → ${esc(x)}<br>`:'').join('')}
+          ${ch.stop!==null&&ch.stop!==undefined?`<b class="rc">✓ Causa raíz: ${esc(ch.whys[ch.stop])}</b>`:''}
+        </div>`).join('')}</div>
+
+      <div class="dsec"><h3>Contramedida inmediata (restauración)</h3>
+        <div class="chainbox">${esc(c.contramedida_inmediata||'— no cargada —')}</div></div>
+
+      ${c.expansion_horizontal?`<div class="dsec"><h3>Expansión horizontal (P7)</h3>
+        <div class="chainbox">${esc(c.expansion_horizontal)}</div></div>`:''}
+    </div>
+
+    <div class="card">
+      <h2>Plan de acción y tarjetas</h2>
+      <p class="sub">Cada acción puede generar una tarjeta en TPM o un evento en EHS.
+         Al crearla, pegá el número de tarjeta para cerrar la trazabilidad.</p>
+      ${(c.acciones||[]).length?(c.acciones||[]).map((a,i)=>`
+        <div class="tcard ${estadoVencimiento(a)==='vencida'?'venc':''}">
+          <div class="tt">${esc(a.texto)} <span class="destino-chip ${esc(a.destino)}">${esc(a.destino)}</span>
+            <span class="v-badge ${VENC_LABEL[estadoVencimiento(a)].cls}">${VENC_LABEL[estadoVencimiento(a)].t}</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(a.pilar)}</div>
+          <div class="trow">
+            <select onchange="cambiarAccion('${esc(a.id)}',{estado:this.value})">
+              ${['Pendiente','En curso','Hecha'].map(e=>`<option ${a.estado===e?'selected':''}>${e}</option>`).join('')}</select>
+            <select onchange="cambiarAccion('${esc(a.id)}',{responsable:this.value})">
+              <option value="">Responsable...</option>
+              ${SECTORES_ORG.map(sec=>`<optgroup label="${esc(sec)}">`+
+                 PERSONAS_POR_SECTOR[sec].map(p=>`<option ${a.responsable===p?'selected':''}>${esc(p)}</option>`).join('')
+                 +`</optgroup>`).join('')}</select>
+            <input type="date" value="${esc(a.fecha_compromiso||'')}"
+                   onchange="cambiarAccion('${esc(a.id)}',{fecha_compromiso:this.value})">
+          </div>
+          ${a.tarjeta_id
+            ? `<div class="linked">🔗 Vinculada a tarjeta <b>${esc(a.tarjeta_id)}</b>${a.tarjeta_url?` · <a href="${esc(a.tarjeta_url)}" target="_blank">abrir</a>`:''}</div>`
+            : `<div class="trow">
+                 <a class="btn ${a.destino==='EHS'?'ghost':'green'} small" target="_blank"
+                    href="${esc(linkTarjeta(c,a))}">Crear tarjeta en ${esc(a.destino)} →</a>
+                 <input type="text" id="tid_${i}" placeholder="N° de tarjeta creada" style="width:150px">
+                 <button class="btn ghost small" onclick="vincular('${esc(a.id)}',${i})">Vincular</button>
+               </div>`}
+        </div>`).join('') : '<div class="empty">Este caso no tiene acciones cargadas.</div>'}
+    </div>
+
+    <div class="card">
+      <h2>Verificación del resultado (P6)</h2>
+      <p class="sub">Un caso no se cierra porque se hicieron las acciones, sino porque el problema
+         <b>dejó de repetirse</b>. Volvé acá después de la fecha de verificación.</p>
+      <div class="grid2">
+        <div class="field"><label>Fecha de verificación</label>
+          <input type="date" value="${esc(c.fecha_verificacion||'')}"
+                 onchange="cambiarCaso({fecha_verificacion:this.value})"></div>
+        <div class="field"><label>¿Se repitió el problema?</label>
+          <select onchange="cambiarCaso({resultado_verificacion:this.value})">
+            <option value="">— sin verificar —</option>
+            ${['No se repitió — solución efectiva','Se repitió — reabrir análisis','Parcial — mejoró pero sigue']
+              .map(r=>`<option ${c.resultado_verificacion===r?'selected':''}>${r}</option>`).join('')}
+          </select></div>
+      </div>
+      <div class="field"><label>Notas de la verificación</label>
+        <textarea onchange="cambiarCaso({nota_verificacion:this.value})">${esc(c.nota_verificacion||'')}</textarea></div>
+    </div>`;
+  window.scrollTo({top:0});
+}
+
+async function cambiarCaso(cambios){
+  try{ await DB.actualizarCaso(ACTUAL.id, cambios); Object.assign(ACTUAL,cambios); toast('Caso actualizado'); }
+  catch(e){ toast('Error: '+e.message, 4000); }
+}
+async function cambiarAccion(accionId, cambios){
+  try{
+    await DB.actualizarAccion(ACTUAL.id, accionId, cambios);
+    const a=(ACTUAL.acciones||[]).find(x=>String(x.id)===String(accionId));
+    if(a) Object.assign(a,cambios);
+    toast('Acción actualizada');
+  }catch(e){ toast('Error: '+e.message, 4000); }
+}
+async function vincular(accionId, i){
+  const v=document.getElementById('tid_'+i).value.trim();
+  if(!v){ alert('Escribí el número de la tarjeta que creaste.'); return; }
+  const a=(ACTUAL.acciones||[]).find(x=>String(x.id)===String(accionId));
+  await cambiarAccion(accionId,{tarjeta_id:v, tarjeta_url:a?linkTarjeta(ACTUAL,a):''});
+  verDetalle(ACTUAL.id);
+}
+
+cargar();
+</script>
+<script>pintarFooter()</script>
+</body>
+</html>
