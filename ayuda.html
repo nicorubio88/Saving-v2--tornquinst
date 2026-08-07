@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cómo funciona — Seguimiento de Ahorros</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+</head>
+<body>
+<header class="topbar no-print">
+  <a href="index.html" class="brand">💡 Seguimiento de Ahorros</a>
+  <nav>
+    <a href="index.html">Dashboard</a>
+    <a href="nuevo.html">+ Nuevo Proyecto</a>
+    <a href="arbol.html">Árbol de Pérdidas</a>
+    <a href="ideas.html">Banco de Ideas</a>
+    <a href="ayuda.html"><strong>❓ Cómo funciona</strong></a>
+  </nav>
+</header>
+
+<main class="container">
+  <h1>Cómo funciona el sistema</h1>
+  <p class="hint">
+    Esta página explica de punta a punta cómo funciona la app: de dónde salen los números,
+    cómo se calcula cada cosa, y qué hacer en cada pantalla. Pensada para nueva gente del
+    equipo o para repasar antes de una auditoría de datos.
+  </p>
+
+  <!-- ============================================================ -->
+  <h2 class="section-title">1. Arquitectura: de dónde salen los datos</h2>
+  <div class="card">
+    <p>
+      No hay una base de datos tradicional: <strong>Google Sheets es la base de datos</strong>.
+      Un backend en Google Apps Script lee y escribe esa planilla, y expone una API web
+      (el "Web App"). El frontend es un sitio estático (sin servidor propio) que solo
+      consume esa API — por eso hostearlo es gratis o casi gratis (DigitalOcean Static
+      Site o GitHub Pages).
+    </p>
+    <div class="mermaid">
+flowchart LR
+    U["🧑‍💼 Vos<br/>(navegador)"] -->|"HTTP GET/POST"| FE["🖥️ Frontend estático<br/>(HTML + JS puro)"]
+    FE -->|"fetch(APPS_SCRIPT_URL)"| BE["⚙️ Google Apps Script<br/>(Web App /exec)"]
+    BE -->|"lee / escribe"| SH[("📊 Google Sheets<br/>Proyectos · Registros · Ideas")]
+    SH -.->|"1 fila = 1 medición<br/>o 1 proyecto"| BE
+    style U fill:#f0f5ec,stroke:#548235
+    style FE fill:#e3f1da,stroke:#548235
+    style BE fill:#fdeacb,stroke:#c98a12
+    style SH fill:#dcefc9,stroke:#3D5F26
+    </div>
+    <p class="hint">
+      Consecuencia práctica: si algo no aparece o no se actualiza, casi siempre es porque
+      falta re-implementar el Web App ("Implementar → Nueva versión") después de pegar
+      código nuevo en Apps Script — el editor puede mostrar el código nuevo mientras la
+      URL <code>/exec</code> sigue sirviendo el viejo. Se puede verificar abriendo
+      <code>&lt;URL_DEL_WEB_APP&gt;?action=version</code> en el navegador.
+    </p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="section-title">2. Ciclo de vida de un proyecto</h2>
+  <div class="card">
+    <div class="mermaid">
+flowchart TD
+    A["💡 Idea suelta<br/>(Asakai, kaizen, recorrida)"] -->|"Banco de Ideas"| B["📋 Idea cargada<br/>en evaluación"]
+    B -->|"aprobada"| C["✅ Convertir en proyecto"]
+    C --> D["🆕 Proyecto activo<br/>(12 meses desde su inicio)"]
+    D -->|"cada semana/mes"| E["📥 Cargar medición<br/>(valores reales del período)"]
+    E --> F["🧮 Se calcula solo:<br/>indicador + ahorro del período"]
+    F -->|"otro sector revisa"| G["✔️ Validación cruzada<br/>(opcional)"]
+    F --> D
+    D -->|"llega a los 12 meses<br/>o se decide cerrar"| H{"¿Se logró<br/>el objetivo?"}
+    H -->|"sí"| I["🏁 Cerrado — logrado"]
+    H -->|"no"| J["🏁 Cerrado — no logrado"]
+    style A fill:#fdeacb,stroke:#c98a12
+    style D fill:#dcefc9,stroke:#3D5F26
+    style G fill:#e3f1da,stroke:#548235
+    style I fill:#cfe8d6,stroke:#1c5c33
+    style J fill:#f4d6d2,stroke:#b23a2f
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="section-title">3. Cómo se calcula el ahorro de un período</h2>
+  <div class="card">
+    <p>
+      Este es el corazón de toda la app. Cada vez que cargás una medición (ej: kWh y
+      toneladas de una semana), pasa esto:
+    </p>
+    <div class="mermaid">
+flowchart LR
+    V["Valores cargados<br/>ej: kw=180.000, ton=1.200"] --> IND["Fórmula del indicador<br/>ej: kw / ton"]
+    IND --> RES["Indicador del período<br/>ej: 150 kWh/ton"]
+    RES --> DIF["Diferencia vs línea de base<br/>ej: 145 − 150 = −5"]
+    DIF --> COSTO{"¿Costo fijo<br/>o variable?"}
+    COSTO -->|"fijo"| CF["Número fijo del proyecto"]
+    COSTO -->|"variable"| CV["Se lee de una variable<br/>cargada ESE mismo período<br/>(ej: precio_gas)"]
+    CF --> MULT["Diferencia × Costo"]
+    CV --> MULT
+    MULT --> VOL["× Variable de volumen<br/>ej: × 1.200 ton"]
+    VOL --> AHORRO["💰 Ahorro del período"]
+    style AHORRO fill:#dcefc9,stroke:#3D5F26
+    style COSTO fill:#fdeacb,stroke:#c98a12
+    </div>
+    <p class="hint">
+      <strong>Por qué el costo puede ser "variable":</strong> si el precio de un insumo
+      cambia mes a mes (gas, energía), un costo fijo obligaría a recalcular TODO el
+      histórico cada vez que se edita — distorsionando meses pasados. Con costo variable,
+      cada mes se carga con su propio precio real y queda valuado a ese precio para
+      siempre, sin importar qué pase después.
+    </p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="section-title">4. Los 3 tipos de objetivo</h2>
+  <div class="card">
+    <div class="mermaid">
+flowchart TD
+    T{"Tipo de objetivo"} -->|"Total 12 meses"| ANUAL["📅 Anual<br/>Un monto fijo repartido<br/>en todo el año"]
+    T -->|"Monto fijo por mes"| MENSUAL["🗓️ Mensual<br/>El mismo $ objetivo<br/>todos los meses"]
+    T -->|"Según producción real"| DIN{"Dinámico"}
+    DIN -->|"escribo el $/unidad"| MD["💲 Monto directo<br/>$/tonelada objetivo,<br/>fijo, × volumen real"]
+    DIN -->|"defino el nivel de<br/>eficiencia a lograr"| NI["🎯 Nivel de indicador<br/>(base − objetivo) × costo<br/>vigente ese período"]
+    style ANUAL fill:#e3f1da,stroke:#548235
+    style MENSUAL fill:#e3f1da,stroke:#548235
+    style MD fill:#fdeacb,stroke:#c98a12
+    style NI fill:#fdeacb,stroke:#c98a12
+    </div>
+    <p class="hint">
+      <strong>"Nivel de indicador"</strong> es el más potente: separa lo que controlás (la
+      eficiencia, ej. bajar de 145 a 130 kWh/ton) de lo que no controlás (el precio de la
+      energía). El objetivo en $ se deriva solo con el costo vigente — si el costo es
+      variable, se recalcula con el precio de CADA mes, igual que el ahorro real.
+    </p>
+    <p class="hint">
+      ⚠️ Error común: si la línea de base y el objetivo apuntan en un sentido pero
+      "Sentido de la mejora" está configurado al revés (ej. base=0 apuntando a un número
+      MÁS ALTO, pero marcado como "menor es mejor"), la resta da negativa y no hay meta
+      calculable. La app avisa esto explícitamente en el detalle del proyecto.
+    </p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="section-title">5. Validación cruzada</h2>
+  <div class="card">
+    <div class="mermaid">
+sequenceDiagram
+    actor P as Producción
+    participant App as App
+    actor C as Controlling
+    P->>App: Carga la medición del período
+    App->>App: Calcula indicador y ahorro
+    C->>App: Revisa la fila en el histórico
+    C->>App: Toca "Validar" e ingresa su nombre
+    App->>App: Guarda ✅ validado_por + fecha
+    Note over App: Si alguien EDITA esa fila después,<br/>la validación se borra sola —<br/>los datos cambiaron, hay que re-validar.
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="section-title">6. Del dato cargado al reporte</h2>
+  <div class="card">
+    <div class="mermaid">
+flowchart TD
+    REG["📥 Se carga un registro"] --> KPI["Se recalculan los KPIs<br/>del proyecto (ahorro, cumplimiento,<br/>proyección a 12 meses)"]
+    KPI --> DASH["📊 Dashboard consolidado<br/>(todos los proyectos activos)"]
+    DASH --> PARETO["📈 Pareto<br/>qué proyecto aporta más"]
+    DASH --> PNL["📑 Impacto en el P&amp;L<br/>por línea de costo"]
+    DASH --> ARBOL["🌳 Árbol de pérdidas<br/>por categoría JIPM"]
+    DASH --> ALERTA["🚨 Alerta de reposición<br/>cuándo hace falta cartera nueva"]
+    DASH --> EXPORT["⬇️ Exportar a Excel<br/>(mismo filtro que la vista)"]
+    style REG fill:#dcefc9,stroke:#3D5F26
+    style DASH fill:#e3f1da,stroke:#548235
+    </div>
+    <p class="hint">
+      Todo lo que ves en el dashboard (KPIs, gráficos, Pareto, alerta) se recalcula al
+      vuelo desde los registros — no hay números "guardados" que puedan quedar
+      desactualizados. Filtrar por fecha o por estado del proyecto recalcula todo en
+      conjunto, no solo el gráfico.
+    </p>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 class="section-title">7. Guía rápida por pantalla</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th>Pantalla</th><th>Para qué sirve</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Dashboard</strong></td><td>Vista consolidada de todos los proyectos activos: KPIs, evolución mensual, Pareto, P&amp;L, alerta de reposición, exportar a Excel.</td></tr>
+        <tr><td><strong>+ Nuevo Proyecto</strong></td><td>Alta y edición de proyectos: fórmula del indicador, línea de base, costo (fijo/variable), tipo de objetivo, y una simulación en vivo antes de guardar.</td></tr>
+        <tr><td><strong>Detalle de proyecto</strong></td><td>Cargar mediciones periódicas, ver el histórico, validar datos, filtrar por fecha, editar o eliminar el proyecto.</td></tr>
+        <tr><td><strong>Árbol de Pérdidas</strong></td><td>Consolida el ahorro por categoría JIPM/Suzuki y por línea del P&amp;L — para reuniones y presentaciones (tiene botón de impresión/PDF).</td></tr>
+        <tr><td><strong>Banco de Ideas</strong></td><td>Ideas sueltas antes de convertirse en proyecto formal. Su potencial total se puede ver superpuesto en el gráfico del dashboard.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<footer class="footer">Papelera del Sur · Planta Tornquist · TPM / Mejora Enfocada</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor: "#e3f1da",
+      primaryBorderColor: "#548235",
+      primaryTextColor: "#24301d",
+      lineColor: "#7c8a72",
+      fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+      fontSize: "14px",
+    },
+  });
+</script>
+</body>
+</html>
