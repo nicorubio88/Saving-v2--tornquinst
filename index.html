@@ -67,9 +67,17 @@
       <label><input type="checkbox" id="op-nombres"> Mostrar nombre del proyecto</label>
       <label><input type="checkbox" id="op-total-mes"> Mostrar total del mes</label>
       <label><input type="checkbox" id="op-proyeccion"> Proyectar próximos 12 meses</label>
+      <label><input type="checkbox" id="op-banco-ideas"> Mostrar banco de ideas</label>
     </div>
     <canvas id="grafico-consolidado" height="110"></canvas>
     <div id="nota-proyeccion" class="hint" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h3>Pareto de proyectos — quién aporta más</h3>
+    <p class="hint">Ordenado de mayor a menor ahorro acumulado, con el % acumulado (línea) para ver cuántos proyectos explican la mayor parte del ahorro.</p>
+    <canvas id="grafico-pareto" height="100"></canvas>
+    <div id="nota-pareto" class="hint" style="margin-top:8px"></div>
   </div>
 
   <div class="card">
