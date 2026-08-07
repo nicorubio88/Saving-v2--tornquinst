@@ -10,9 +10,31 @@ let chartConsolidado = null;
 let chartPnl = null;
 
 // Paleta del gráfico apilado: una barra de color por proyecto activo.
-const PALETA = ["#548235", "#7FA76A", "#3D5F26", "#A3C48A", "#2E4A1C", "#c98a12", "#8a6d3b", "#5b8ea8"];
+/**
+ * Paleta para los proyectos del gráfico apilado. Antes tenía 5 tonos de
+ * verde muy parecidos entre 8 colores — con 6+ proyectos activos, las
+ * franjas se volvían indistinguibles ("mucho ruido, poco claro"). Esta
+ * versión usa hues distintos entre sí (verde, oliva, ocre, terracota, azul,
+ * malva, teal, marrón) manteniendo una paleta sobria y profesional, no un
+ * arcoíris — pensada para que 10 proyectos en la misma barra se puedan
+ * diferenciar de un vistazo.
+ */
+const PALETA = ["#2E5339", "#C9A227", "#4A6FA5", "#B5651D", "#5A9BA8", "#A85751", "#8FBC94", "#8B4B6B", "#5B8C5A", "#8a6d3b"];
 const COLOR_PROYECCION = "#8e7cc3";  // violeta: se distingue de todos los verdes del histórico
 const COLOR_BANCO_IDEAS = "#d4838f"; // rosa: no se confunde con el ocre del objetivo ni con los verdes
+
+/**
+ * Color de texto (blanco o casi-negro) según el brillo del fondo, para que
+ * las etiquetas dentro de las barras SIEMPRE se lean bien — antes el texto
+ * blanco fijo se volvía ilegible sobre los tonos de verde más claros de la
+ * paleta (ej. #8FBC94). Fórmula estándar de luminancia relativa (WCAG).
+ */
+function colorTextoLegible(colorFondo) {
+  const hex = colorFondo.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
+  const luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminancia > 0.6 ? "#24301d" : "#ffffff";
+}
 
 // El plugin de etiquetas se registra una sola vez y arranca APAGADO: solo se
 // activa por dataset cuando el usuario tilda "Mostrar montos en las barras".
@@ -247,15 +269,20 @@ function renderConsolidado(vista) {
   if (!c.etiquetas.length) { chartConsolidado = null; if (nota) nota.innerHTML = ""; return; }
 
   // Etiquetas de datos: montos y/o nombre del proyecto dentro de cada barra.
-  const configEtiquetas = (nombreSerie) => ({
+  const configEtiquetas = (nombreSerie, colorFondo) => ({
     display: (ctx2) => {
       if (!opciones.valores && !opciones.nombres) return false;
       const v = ctx2.dataset.data[ctx2.dataIndex];
       // Se ocultan los segmentos chicos: la etiqueta no entraría y ensucia.
       return v !== 0 && Math.abs(v) > 0;
     },
-    color: "#fff",
+    color: colorTextoLegible(colorFondo),
     font: { size: 10, weight: "600" },
+    // Contorno leve del color opuesto: refuerzo extra de contraste para
+    // segmentos angostos donde el color de fondo varía ligeramente por el
+    // degradado del borde de la barra.
+    textStrokeColor: colorTextoLegible(colorFondo) === "#ffffff" ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.5)",
+    textStrokeWidth: 2,
     formatter: (v) => {
       if (v === 0) return "";
       const partes = [];
@@ -276,14 +303,17 @@ function renderConsolidado(vista) {
     const etiquetasProy = opciones.proyeccion && pf ? pf.etiquetas.map(nombreMes) : [];
     const labels = etiquetasHist.concat(etiquetasProy);
 
-    const datasets = c.series.map((serie, i) => ({
-      label: serie.nombre.length > 38 ? serie.nombre.slice(0, 38) + "…" : serie.nombre,
-      data: serie.datos.concat(etiquetasProy.map(() => null)),
-      backgroundColor: PALETA[i % PALETA.length],
-      stack: "ahorro",
-      borderRadius: 3,
-      datalabels: configEtiquetas(serie.nombre),
-    }));
+    const datasets = c.series.map((serie, i) => {
+      const color = PALETA[i % PALETA.length];
+      return {
+        label: serie.nombre.length > 38 ? serie.nombre.slice(0, 38) + "…" : serie.nombre,
+        data: serie.datos.concat(etiquetasProy.map(() => null)),
+        backgroundColor: color,
+        stack: "ahorro",
+        borderRadius: 3,
+        datalabels: configEtiquetas(serie.nombre, color),
+      };
+    });
 
     datasets.push({
       label: "Objetivo mensual",
@@ -325,7 +355,7 @@ function renderConsolidado(vista) {
         stack: "proyeccion",
         borderRadius: 3,
         datalabels: opciones.valores
-          ? { display: true, color: "#fff", font: { size: 10, weight: "600" }, formatter: (v) => (v ? fmtCompacto(v) : "") }
+          ? { display: true, color: colorTextoLegible(COLOR_PROYECCION), font: { size: 10, weight: "600" }, formatter: (v) => (v ? fmtCompacto(v) : "") }
           : { display: false },
       });
     }
@@ -343,7 +373,7 @@ function renderConsolidado(vista) {
         backgroundColor: COLOR_BANCO_IDEAS,
         borderRadius: 3,
         datalabels: opciones.valores
-          ? { display: true, color: "#fff", font: { size: 10, weight: "600" }, formatter: (v) => (v ? fmtCompacto(v) : "") }
+          ? { display: true, color: colorTextoLegible(COLOR_BANCO_IDEAS), font: { size: 10, weight: "600" }, formatter: (v) => (v ? fmtCompacto(v) : "") }
           : { display: false },
       });
     }
@@ -354,8 +384,12 @@ function renderConsolidado(vista) {
       options: {
         responsive: true,
         plugins: {
-          legend: { position: "bottom", labels: { boxWidth: 12, padding: 12, filter: (i) => i.text !== "Total del mes" } },
+          legend: {
+            position: "bottom",
+            labels: { boxWidth: 10, boxHeight: 10, borderRadius: 3, useBorderRadius: true, padding: 14, font: { size: 11 }, filter: (i) => i.text !== "Total del mes" },
+          },
           tooltip: {
+            backgroundColor: "rgba(36,48,29,0.92)", padding: 10, cornerRadius: 8, boxPadding: 4,
             callbacks: {
               label: (ctx2) => (ctx2.parsed.y === null ? null : tooltipEnDolares(ctx2)),
               afterBody: (items) => {
@@ -368,7 +402,17 @@ function renderConsolidado(vista) {
             },
           },
         },
-        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: (v) => fmtMoney(v) } } },
+        // Grillas suaves (antes negras/duras): el eje se lee, no compite con
+        // los datos. Sin borde superior/derecho, que no aporta información.
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: {
+            stacked: true, beginAtZero: true,
+            grid: { color: "#e9ede4" },
+            border: { display: false },
+            ticks: { callback: (v) => fmtCompacto(v), font: { size: 11 }, color: "#6b7862" },
+          },
+        },
       },
     });
 
@@ -391,18 +435,21 @@ function renderConsolidado(vista) {
       data: {
         labels: c.etiquetas.map(nombreMes),
         datasets: [
-          { label: "Ahorro acumulado", data: c.acumulado, borderColor: "#548235", backgroundColor: "rgba(84,130,53,0.15)", fill: true, tension: 0.3,
-            datalabels: opciones.valores ? { display: true, align: "top", color: "#2E4A1C", font: { size: 10, weight: "600" }, formatter: fmtCompacto } : { display: false } },
-          { label: "Objetivo acumulado", data: c.objetivo_acumulado, borderColor: "#c98a12", borderDash: [6, 4], fill: false, datalabels: { display: false } },
+          { label: "Ahorro acumulado", data: c.acumulado, borderColor: PALETA[0], backgroundColor: "rgba(46,83,57,0.12)", borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: PALETA[0],
+            datalabels: opciones.valores ? { display: true, align: "top", color: "#3D5F26", font: { size: 10, weight: "600" }, formatter: fmtCompacto } : { display: false } },
+          { label: "Objetivo acumulado", data: c.objetivo_acumulado, borderColor: "#c98a12", borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, datalabels: { display: false } },
         ],
       },
       options: {
         responsive: true,
         plugins: {
-          legend: { position: "bottom", labels: { boxWidth: 12, padding: 12 } },
-          tooltip: { callbacks: { label: tooltipEnDolares } },
+          legend: { position: "bottom", labels: { boxWidth: 10, boxHeight: 10, borderRadius: 3, useBorderRadius: true, padding: 14, font: { size: 11 } } },
+          tooltip: { backgroundColor: "rgba(36,48,29,0.92)", padding: 10, cornerRadius: 8, boxPadding: 4, callbacks: { label: tooltipEnDolares } },
         },
-        scales: { y: { beginAtZero: true, ticks: { callback: (v) => fmtMoney(v) } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { beginAtZero: true, grid: { color: "#e9ede4" }, border: { display: false }, ticks: { callback: (v) => fmtCompacto(v), font: { size: 11 }, color: "#6b7862" } },
+        },
       },
     });
     if (nota) nota.innerHTML = "";
@@ -437,20 +484,26 @@ function renderPareto(d) {
           type: "bar",
           label: "Ahorro acumulado",
           data: p.proyectos.map((x) => x.ahorro),
-          backgroundColor: "#548235",
+          backgroundColor: PALETA[0],
           borderRadius: 3,
           yAxisID: "y",
           order: 2,
-          datalabels: { display: false },
+          datalabels: {
+            display: true, anchor: "end", align: "top", offset: 2,
+            color: "#3D5F26", font: { size: 10, weight: "600" },
+            formatter: (v) => fmtCompacto(v),
+          },
         },
         {
           type: "line",
           label: "% acumulado",
           data: p.proyectos.map((x) => x.porcentaje_acumulado),
-          borderColor: "#c98a12",
-          backgroundColor: "#c98a12",
+          borderColor: COLOR_PROYECCION,
+          backgroundColor: COLOR_PROYECCION,
+          borderWidth: 2,
           borderDash: [4, 3],
           pointRadius: 3,
+          pointBackgroundColor: COLOR_PROYECCION,
           fill: false,
           yAxisID: "y2",
           order: 1,
@@ -461,8 +514,9 @@ function renderPareto(d) {
     options: {
       responsive: true,
       plugins: {
-        legend: { position: "bottom", labels: { boxWidth: 12, padding: 12 } },
+        legend: { position: "bottom", labels: { boxWidth: 10, boxHeight: 10, borderRadius: 3, useBorderRadius: true, padding: 14, font: { size: 11 } } },
         tooltip: {
+          backgroundColor: "rgba(36,48,29,0.92)", padding: 10, cornerRadius: 8, boxPadding: 4,
           callbacks: {
             label: (ctx2) => ctx2.dataset.yAxisID === "y2"
               ? `% acumulado: ${ctx2.parsed.y}%`
@@ -471,9 +525,9 @@ function renderPareto(d) {
         },
       },
       scales: {
-        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
-        y: { beginAtZero: true, position: "left", ticks: { callback: (v) => fmtMoney(v) } },
-        y2: { beginAtZero: true, position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: (v) => v + "%" } },
+        x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0, font: { size: 11 } } },
+        y: { beginAtZero: true, position: "left", grid: { color: "#e9ede4" }, border: { display: false }, ticks: { callback: (v) => fmtCompacto(v), font: { size: 11 }, color: "#6b7862" } },
+        y2: { beginAtZero: true, position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, border: { display: false }, ticks: { callback: (v) => v + "%", font: { size: 11 }, color: "#6b7862" } },
       },
     },
   });
@@ -505,10 +559,13 @@ function renderPnl(d) {
       indexAxis: "y",
       responsive: true,
       plugins: {
-        legend: { position: "bottom", labels: { boxWidth: 12, padding: 12 } },
-        tooltip: { callbacks: { label: tooltipEnDolares } },
+        legend: { position: "bottom", labels: { boxWidth: 10, boxHeight: 10, borderRadius: 3, useBorderRadius: true, padding: 14, font: { size: 11 } } },
+        tooltip: { backgroundColor: "rgba(36,48,29,0.92)", padding: 10, cornerRadius: 8, boxPadding: 4, callbacks: { label: tooltipEnDolares } },
       },
-      scales: { x: { beginAtZero: true, ticks: { callback: (v) => fmtMoney(v) } } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: "#e9ede4" }, border: { display: false }, ticks: { callback: (v) => fmtCompacto(v), font: { size: 11 }, color: "#6b7862" } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      },
     },
   });
 }

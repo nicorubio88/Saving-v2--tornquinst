@@ -27,6 +27,26 @@ function notaObjetivo(p) {
     return `<div class="hint">📌 Objetivo mensual fijo: <strong>${fmtMoney(p.objetivo_mensual)}</strong>/mes
       (constante, no se reparte el anual en 12 partes iguales)</div>`;
   }
+
+  // El backend ya diagnostica POR QUÉ un objetivo dinámico no está
+  // produciendo nada — antes esto colapsaba en silencio a $0, que se veía
+  // como un proyecto "desviado" cuando en realidad era un dato mal cargado.
+  if (p.objetivo_diagnostico) {
+    const MENSAJES = {
+      falta_valor_objetivo: `Falta cargar el <strong>"Valor objetivo del indicador a lograr"</strong>.
+        Sin ese dato la app no puede calcular ninguna meta.`,
+      falta_variable_costo: `El costo está en modo "variable" pero no tiene una variable de costo asignada.`,
+      falta_objetivo_unitario: `Falta cargar el <strong>"Objetivo de ahorro por unidad de volumen"</strong>.`,
+      sentido_de_mejora_invertido: `La línea de base (${fmtNumero(p.valor_base_indicador, 2)}), el nivel objetivo
+        (${fmtNumero(p.valor_objetivo_indicador, 2)}) y el <strong>"Sentido de la mejora"</strong>
+        (${p.menor_es_mejor ? "un indicador más bajo es mejor" : "un indicador más alto es mejor"}) no son
+        consistentes entre sí — la resta da negativa, así que no hay una meta calculable.
+        Ejemplo típico: base=0 apuntando a un objetivo MÁS ALTO, pero configurado como "menor es mejor" (debería ser "mayor es mejor").`,
+    };
+    return `<div class="hint valor-negativo">⚠️ Objetivo dinámico mal configurado: ${MENSAJES[p.objetivo_diagnostico] || "revisá la configuración del objetivo."}
+      El ahorro real SÍ se sigue calculando bien — esto solo afecta el objetivo. Corregilo con "✎ Editar proyecto".</div>`;
+  }
+
   if (p.tipo_objetivo === "dinamico" && p.modo_objetivo_dinamico === "nivel_indicador") {
     const diferencia = p.menor_es_mejor
       ? (p.valor_base_indicador - p.valor_objetivo_indicador)
@@ -98,10 +118,10 @@ async function render() {
         </div>
         <div class="kpi ${P.ahorro_acumulado < 0 ? "kpi-negativo" : ""}">
           <div class="kpi-icon">💰</div>
-          <div class="kpi-label">Ahorro acumulado vs objetivo</div>
-          <div class="kpi-value" style="font-size:1.1rem">${fmtMoney(P.ahorro_acumulado)} / ${fmtMoney(P.objetivo_valor)}</div>
+          <div class="kpi-label">Ahorro acumulado vs objetivo${P.objetivo_es_estimado ? " (estimado)" : ""}</div>
+          <div class="kpi-value" style="font-size:1.1rem">${fmtMoney(P.ahorro_acumulado)} / ${fmtMoney(P.objetivo_es_estimado ? P.objetivo_anual_estimado : P.objetivo_valor)}</div>
           ${barraProgreso(P.avance_objetivo_pct)}
-          <div class="hint">${P.avance_objetivo_pct}% del objetivo</div>
+          <div class="hint">${P.avance_objetivo_pct}% del objetivo${P.objetivo_es_estimado ? " (promedio mensual real × 12, se afina con cada carga)" : ""}</div>
         </div>
         <div class="kpi ${P.semaforo === "rojo" ? "kpi-negativo" : ""}">
           <div class="kpi-icon">${P.semaforo === "verde" ? "✅" : P.semaforo === "rojo" ? "⚠️" : "🟡"}</div>
