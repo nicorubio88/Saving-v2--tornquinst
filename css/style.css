@@ -318,3 +318,14 @@ tr.editando { background:#fff8e6; }
 .alerta-reposicion.critica h4 { color: var(--rojo); }
 .alerta-reposicion .cifra { font-size: 1.25rem; font-weight: 700; }
 .alerta-reposicion .detalle { font-size: 0.85rem; color: #5a6551; margin-top: 6px; line-height: 1.5; }
+
+/* ===== v11: validación cruzada de mediciones ===== */
+.btn-validacion {
+  border: none; border-radius: 14px; padding: 4px 10px;
+  font-size: 0.76rem; cursor: pointer; white-space: nowrap;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis;
+}
+.btn-validacion.pendiente { background: #eceee9; color: #666; }
+.btn-validacion.pendiente:hover { background: #dfe2da; }
+.btn-validacion.validado { background: #e3f1da; color: #2c5c1c; font-weight: 600; }
+.btn-validacion.validado:hover { background: #d0e6c3; }
