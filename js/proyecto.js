@@ -186,13 +186,14 @@ async function render() {
 
       <div class="card">
         <h3>Histórico de mediciones</h3>
-        <p class="hint">Podés corregir cualquier fila con ✎ — al guardar se recalcula el indicador y el ahorro.</p>
+        <p class="hint">Podés corregir cualquier fila con ✎ — al guardar se recalcula el indicador y el ahorro (y se pierde la validación, si la tenía).</p>
+        <p class="hint">${resumenValidacion(P.registros)}</p>
         <div style="overflow-x:auto">
           <table class="tabla-editable">
             <thead><tr>
               <th>Período</th>
               ${P.variables.map((v) => `<th>${v.label || v.nombre}</th>`).join("")}
-              <th>Indicador</th><th>Ahorro</th><th>Cargado por</th><th></th>
+              <th>Indicador</th><th>Ahorro</th><th>Cargado por</th><th>Validado</th><th></th>
             </tr></thead>
             <tbody id="tbody-registros"></tbody>
           </table>
@@ -220,6 +221,14 @@ async function render() {
   }
 }
 
+/** "X de Y mediciones validadas" — pantallazo rápido de cuánto falta revisar. */
+function resumenValidacion(registros) {
+  if (!registros.length) return "";
+  const validadas = registros.filter((r) => r.validado).length;
+  const pct = Math.round((validadas / registros.length) * 100);
+  return `✅ ${validadas} de ${registros.length} mediciones validadas (${pct}%)`;
+}
+
 function registrosVisibles() {
   return P.registros.filter((r) => {
     const anchor = r.fecha_hasta || r.fecha_desde;
@@ -234,7 +243,7 @@ function renderTabla() {
   const tbody = document.getElementById("tbody-registros");
   const regs = registrosVisibles().slice().reverse();
   if (!regs.length) {
-    tbody.innerHTML = `<tr><td colspan="10">No hay mediciones para el filtro seleccionado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11">No hay mediciones para el filtro seleccionado.</td></tr>`;
     return;
   }
   tbody.innerHTML = regs.map((r) => {
@@ -247,6 +256,7 @@ function renderTabla() {
         ${P.variables.map((v) => `<td><input type="number" step="any" class="ed-var" data-nombre="${v.nombre}" value="${r.valores[v.nombre] ?? ""}" style="width:100px"></td>`).join("")}
         <td colspan="2"><em>se recalcula</em></td>
         <td><input type="text" id="ed_cargado_por" value="${r.cargado_por || ""}" style="width:100px"></td>
+        <td class="hint">${r.validado ? "se desvalida al guardar" : ""}</td>
         <td style="white-space:nowrap">
           <button class="btn-small" onclick="guardarEdicion(${r.id})">Guardar</button>
           <button class="btn-small btn-secundario" onclick="cancelarEdicion()">✕</button>
@@ -259,12 +269,31 @@ function renderTabla() {
       <td>${r.indicador != null ? fmtNumero(r.indicador, 3) : "-"}</td>
       <td class="${(r.ahorro_periodo || 0) >= 0 ? "valor-positivo" : "valor-negativo"}">${fmtMoney(r.ahorro_periodo)}</td>
       <td>${r.cargado_por || "-"}</td>
+      <td style="white-space:nowrap">${celdaValidacion(r)}</td>
       <td style="white-space:nowrap">
         <button class="btn-small btn-secundario" onclick="editarRegistro(${r.id})" title="Editar">✎</button>
         <button class="btn-small btn-secundario" onclick="borrarRegistro(${r.id})" title="Eliminar">✕</button>
       </td>
     </tr>`;
   }).join("");
+}
+
+/**
+ * Celda de validación cruzada: un tilde clickeable. Sin validar, invita a
+ * validar (gris); validado, muestra quién y cuándo (verde, con tooltip).
+ * Pensado para que otro sector (ej: Controlling) revise lo que carga
+ * Producción — quien valida no tiene por qué ser quien cargó el dato.
+ */
+function celdaValidacion(r) {
+  if (r.validado) {
+    return `<button class="btn-validacion validado" onclick="desvalidarRegistro(${r.id})"
+      title="Validado por ${r.validado_por} el ${r.validado_en}. Click para quitar la validación.">
+      ✅ ${r.validado_por}
+    </button>`;
+  }
+  return `<button class="btn-validacion pendiente" onclick="abrirValidacion(${r.id})" title="Sin validar — click para validar">
+    ⬜ Validar
+  </button>`;
 }
 
 function editarRegistro(id) { editandoRegistro = id; renderTabla(); }
@@ -291,6 +320,24 @@ async function guardarEdicion(id) {
 async function borrarRegistro(id) {
   if (!confirm("¿Eliminar esta medición?")) return;
   await apiPost({ action: "eliminar_registro", registro_id: id });
+  await render();
+}
+
+/** Pide el nombre de quien valida y guarda la validación cruzada. */
+async function abrirValidacion(id) {
+  const nombre = (prompt("¿Quién valida esta medición? (nombre y apellido)") || "").trim();
+  if (!nombre) return; // canceló o dejó vacío: no se valida
+  try {
+    await apiPost({ action: "validar_registro", registro_id: id, validado: true, validado_por: nombre });
+    await render();
+  } catch (e) {
+    alert("No se pudo validar: " + e.message);
+  }
+}
+
+async function desvalidarRegistro(id) {
+  if (!confirm("¿Quitar la validación de esta medición?")) return;
+  await apiPost({ action: "validar_registro", registro_id: id, validado: false, validado_por: "" });
   await render();
 }
 

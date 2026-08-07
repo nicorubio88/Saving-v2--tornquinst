@@ -12,6 +12,7 @@ let chartPnl = null;
 // Paleta del gráfico apilado: una barra de color por proyecto activo.
 const PALETA = ["#548235", "#7FA76A", "#3D5F26", "#A3C48A", "#2E4A1C", "#c98a12", "#8a6d3b", "#5b8ea8"];
 const COLOR_PROYECCION = "#8e7cc3";  // violeta: se distingue de todos los verdes del histórico
+const COLOR_BANCO_IDEAS = "#d4838f"; // rosa: no se confunde con el ocre del objetivo ni con los verdes
 
 // El plugin de etiquetas se registra una sola vez y arranca APAGADO: solo se
 // activa por dataset cuando el usuario tilda "Mostrar montos en las barras".
@@ -38,7 +39,7 @@ let dashDesde = "";
 let dashHasta = "";
 let dashEstado = "activo";   // activo | todos | cerrados
 // Opciones de visualización del gráfico consolidado (checkboxes)
-const opciones = { valores: false, nombres: false, totalMes: false, proyeccion: false };
+const opciones = { valores: false, nombres: false, totalMes: false, proyeccion: false, bancoIdeas: false };
 
 async function cargarDashboard() {
   const kpiRow = document.getElementById("kpi-row");
@@ -55,6 +56,7 @@ async function cargarDashboard() {
     renderAlertaReposicion(d);
     renderLista(d);
     renderConsolidado("mensual");
+    renderPareto(d);
     renderPnl(d);
 
     const inpDesde = document.getElementById("dash-desde");
@@ -92,7 +94,8 @@ async function cargarDashboard() {
     }
     // Los checkboxes solo redibujan el gráfico: no hace falta pedir datos de nuevo.
     [["op-valores", "valores"], ["op-nombres", "nombres"],
-     ["op-total-mes", "totalMes"], ["op-proyeccion", "proyeccion"]].forEach(([id, clave]) => {
+     ["op-total-mes", "totalMes"], ["op-proyeccion", "proyeccion"],
+     ["op-banco-ideas", "bancoIdeas"]].forEach(([id, clave]) => {
       const el = document.getElementById(id);
       if (el && !el.dataset.enganchado) {
         el.dataset.enganchado = "1";
@@ -327,6 +330,24 @@ function renderConsolidado(vista) {
       });
     }
 
+    // Banco de ideas: se agrega como una columna EXTRA al final (no es un
+    // mes, es "cuánto potencial hay guardado si se activara"), en un color
+    // que no se confunda ni con los proyectos ni con la proyección.
+    const banco = datosDashboard.banco_ideas;
+    if (opciones.bancoIdeas && banco && banco.potencial_total > 0) {
+      labels.push("Banco de ideas");
+      datasets.forEach((ds) => ds.data.push(null)); // alinea todas las series existentes
+      datasets.push({
+        label: `Banco de ideas (${banco.cantidad})`,
+        data: labels.map((_, i) => (i === labels.length - 1 ? banco.potencial_total : null)),
+        backgroundColor: COLOR_BANCO_IDEAS,
+        borderRadius: 3,
+        datalabels: opciones.valores
+          ? { display: true, color: "#fff", font: { size: 10, weight: "600" }, formatter: (v) => (v ? fmtCompacto(v) : "") }
+          : { display: false },
+      });
+    }
+
     chartConsolidado = new Chart(ctx, {
       type: "bar",
       data: { labels, datasets },
@@ -352,11 +373,17 @@ function renderConsolidado(vista) {
     });
 
     if (nota) {
-      nota.innerHTML = opciones.proyeccion && pf
-        ? `📉 En violeta, la proyección de los próximos 12 meses al ritmo actual (${fmtMoney(pf.ritmo_mensual_actual)}/mes). `
+      const partes = [];
+      if (opciones.proyeccion && pf) {
+        partes.push(`📉 En violeta, la proyección de los próximos 12 meses al ritmo actual (${fmtMoney(pf.ritmo_mensual_actual)}/mes). `
           + `La curva baja a medida que cada proyecto llega a sus 12 meses y cierra: es el hueco que hay que cubrir con proyectos nuevos. `
-          + `Pasá el mouse sobre un mes proyectado para ver cuáles cierran.`
-        : "";
+          + `Pasá el mouse sobre un mes proyectado para ver cuáles cierran.`);
+      }
+      if (opciones.bancoIdeas && banco && banco.potencial_total > 0) {
+        partes.push(`💡 En rosa, el potencial de ahorro guardado en el banco de ideas (${banco.cantidad} idea${banco.cantidad === 1 ? "" : "s"} sin convertir todavía): `
+          + `${fmtMoney(banco.potencial_total)} si se activaran como proyectos.`);
+      }
+      nota.innerHTML = partes.join(" ");
     }
   } else {
     chartConsolidado = new Chart(ctx, {
@@ -379,6 +406,85 @@ function renderConsolidado(vista) {
       },
     });
     if (nota) nota.innerHTML = "";
+  }
+}
+
+/**
+ * Pareto de proyectos: barras de ahorro ordenadas de mayor a menor (backend
+ * ya las manda ordenadas) + línea de % acumulado en el eje secundario. Los
+ * proyectos en pérdida se listan aparte en texto, para que no desaparezcan
+ * del gráfico sin explicación.
+ */
+let chartPareto = null;
+function renderPareto(d) {
+  const canvas = document.getElementById("grafico-pareto");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (chartPareto) chartPareto.destroy();
+
+  const p = d.pareto;
+  const nota = document.getElementById("nota-pareto");
+  if (!p || !p.proyectos.length) {
+    if (nota) nota.innerHTML = "Todavía no hay ahorro acumulado positivo para armar el Pareto.";
+    return;
+  }
+
+  chartPareto = new Chart(ctx, {
+    data: {
+      labels: p.proyectos.map((x) => (x.nombre.length > 16 ? x.nombre.slice(0, 16) + "…" : x.nombre)),
+      datasets: [
+        {
+          type: "bar",
+          label: "Ahorro acumulado",
+          data: p.proyectos.map((x) => x.ahorro),
+          backgroundColor: "#548235",
+          borderRadius: 3,
+          yAxisID: "y",
+          order: 2,
+          datalabels: { display: false },
+        },
+        {
+          type: "line",
+          label: "% acumulado",
+          data: p.proyectos.map((x) => x.porcentaje_acumulado),
+          borderColor: "#c98a12",
+          backgroundColor: "#c98a12",
+          borderDash: [4, 3],
+          pointRadius: 3,
+          fill: false,
+          yAxisID: "y2",
+          order: 1,
+          datalabels: { display: false },
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 12, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx2) => ctx2.dataset.yAxisID === "y2"
+              ? `% acumulado: ${ctx2.parsed.y}%`
+              : `${ctx2.dataset.label}: ${fmtMoney(ctx2.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+        y: { beginAtZero: true, position: "left", ticks: { callback: (v) => fmtMoney(v) } },
+        y2: { beginAtZero: true, position: "right", min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: (v) => v + "%" } },
+      },
+    },
+  });
+
+  if (nota) {
+    let texto = `Ahorro positivo total: ${fmtMoney(p.total_positivo)}.`;
+    if (p.proyectos_en_perdida && p.proyectos_en_perdida.length) {
+      texto += ` ⚠️ ${p.proyectos_en_perdida.length} proyecto(s) en pérdida (no entran al ranking): `
+        + p.proyectos_en_perdida.map((x) => `${x.nombre} (${fmtMoney(x.ahorro)})`).join(", ") + ".";
+    }
+    nota.innerHTML = texto;
   }
 }
 
