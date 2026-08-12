@@ -418,6 +418,12 @@ function renderConsolidado(vista) {
 
     if (nota) {
       const partes = [];
+      const excluidos = c.proyectos_excluidos_dato_unico || [];
+      if (excluidos.length) {
+        partes.push(`ℹ️ ${excluidos.length} proyecto${excluidos.length === 1 ? "" : "s"} con una sola medición cargada
+          (${excluidos.join(", ")}) no ${excluidos.length === 1 ? "se muestra" : "se muestran"} acá — un solo dato no es una
+          evolución. Su aporte total sí está en el <strong>Pareto</strong> de abajo.`);
+      }
       if (opciones.proyeccion && pf) {
         partes.push(`📉 En violeta, la proyección de los próximos 12 meses al ritmo actual (${fmtMoney(pf.ritmo_mensual_actual)}/mes). `
           + `La curva baja a medida que cada proyecto llega a sus 12 meses y cierra: es el hueco que hay que cubrir con proyectos nuevos. `
@@ -471,8 +477,26 @@ function renderPareto(d) {
 
   const p = d.pareto;
   const nota = document.getElementById("nota-pareto");
-  if (!p || !p.proyectos.length) {
-    if (nota) nota.innerHTML = "Todavía no hay ahorro acumulado positivo para armar el Pareto.";
+
+  // "d.pareto === undefined" y "d.pareto.proyectos.length === 0" son DOS
+  // situaciones muy distintas, y antes se mostraban con el mismo mensaje
+  // confuso. Si el campo ni siquiera existe en la respuesta, el backend real
+  // en Apps Script todavía no tiene esta función conectada — no es que
+  // falten datos, es que falta re-implementar el Web App. Se distingue acá
+  // para que la propia app diga qué pasa, en vez de tener que adivinar.
+  if (p === undefined) {
+    if (nota) {
+      nota.innerHTML = `⚠️ El backend de Apps Script que está desplegado ahora mismo todavía no calcula el Pareto
+        (esta función se agregó en una actualización posterior a la que tenés activa).
+        Solución: pegá el <code>Metrics.gs</code> y <code>Code.gs</code> más recientes en el editor de Apps Script y
+        hacé <strong>Implementar → Administrar implementaciones → ✎ → Nueva versión → Implementar</strong>.
+        Para confirmar qué versión está activa, abrí <code>&lt;tu URL del Web App&gt;?action=version</code> en el navegador
+        y fijate si <code>pareto_de_proyectos</code> dice <code>true</code>.`;
+    }
+    return;
+  }
+  if (!p.proyectos.length) {
+    if (nota) nota.innerHTML = "Todavía no hay ningún proyecto con ahorro acumulado positivo para armar el Pareto.";
     return;
   }
 

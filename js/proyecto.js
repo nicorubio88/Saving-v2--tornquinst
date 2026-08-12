@@ -28,6 +28,19 @@ function notaObjetivo(p) {
       (constante, no se reparte el anual en 12 partes iguales)</div>`;
   }
 
+  // "objetivo_es_estimado === undefined" es distinto de "=== false": si el
+  // campo ni siquiera existe en la respuesta, el backend real desplegado en
+  // Apps Script todavía no calcula el objetivo dinámico estimado (quedó una
+  // versión vieja de Metrics.gs activa) — no es un problema de tus datos.
+  if (p.tipo_objetivo === "dinamico" && p.objetivo_es_estimado === undefined && p.objetivo_diagnostico === undefined) {
+    return `<div class="hint valor-negativo">⚠️ El backend de Apps Script desplegado ahora mismo todavía no calcula
+      el objetivo dinámico proyectado a 12 meses (se agregó en una actualización posterior). Por eso ves el
+      objetivo en $0 aunque esté todo bien cargado. Solución: pegá el <code>Metrics.gs</code> más reciente en el
+      editor de Apps Script y hacé <strong>Implementar → Nueva versión</strong>. Para confirmar, abrí
+      <code>&lt;tu URL del Web App&gt;?action=version</code> y fijate si <code>objetivo_proyectado_dinamico</code>
+      y <code>diagnostico_objetivo_mal_configurado</code> dicen <code>true</code>.</div>`;
+  }
+
   // El backend ya diagnostica POR QUÉ un objetivo dinámico no está
   // produciendo nada — antes esto colapsaba en silencio a $0, que se veía
   // como un proyecto "desviado" cuando en realidad era un dato mal cargado.
