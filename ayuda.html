@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cómo funciona — Seguimiento de Ahorros</title>
 <link rel="stylesheet" href="css/style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js" defer></script>
 </head>
 <body>
 <header class="topbar no-print">
@@ -199,17 +199,24 @@ flowchart TD
 <footer class="footer">Papelera del Sur · Planta Tornquist · TPM / Mejora Enfocada</footer>
 
 <script>
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: "base",
-    themeVariables: {
-      primaryColor: "#e3f1da",
-      primaryBorderColor: "#548235",
-      primaryTextColor: "#24301d",
-      lineColor: "#7c8a72",
-      fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
-      fontSize: "14px",
-    },
+  // Envuelto en DOMContentLoaded: como mermaid.min.js ahora carga con
+  // "defer" (no bloquea el primer renderizado de la página), hay que
+  // esperar a que termine de cargar antes de llamar a mermaid.initialize().
+  // Los scripts "defer" siempre terminan de ejecutarse ANTES de que dispare
+  // DOMContentLoaded, así que esto es seguro en cualquier navegador.
+  document.addEventListener("DOMContentLoaded", () => {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#e3f1da",
+        primaryBorderColor: "#548235",
+        primaryTextColor: "#24301d",
+        lineColor: "#7c8a72",
+        fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+        fontSize: "14px",
+      },
+    });
   });
 </script>
 </body>
