@@ -19,9 +19,13 @@ let chartPnl = null;
  * arcoíris — pensada para que 10 proyectos en la misma barra se puedan
  * diferenciar de un vistazo.
  */
-const PALETA = ["#2E5339", "#C9A227", "#4A6FA5", "#B5651D", "#5A9BA8", "#A85751", "#8FBC94", "#8B4B6B", "#5B8C5A", "#8a6d3b"];
-const COLOR_PROYECCION = "#8e7cc3";  // violeta: se distingue de todos los verdes del histórico
-const COLOR_BANCO_IDEAS = "#d4838f"; // rosa: no se confunde con el ocre del objetivo ni con los verdes
+// Paleta sincronizada con el CSS "Industrial Slate & Spruce" (restyling de
+// Gemini). Se deriva de --verde/--verde-oscuro/--verde-mas-oscuro reales del
+// CSS, alternada con tonos complementarios para que 10 proyectos en la misma
+// barra apilada se puedan distinguir sin salirse de la familia visual nueva.
+const PALETA = ["#6B4A56", "#B98D4C", "#2D4A3E", "#5A9BA8", "#A83226", "#3B6251", "#8A5A06", "#4A6B5C", "#1A3026", "#8C6A3D"];
+const COLOR_PROYECCION = "#6B4A56";  // ciruela oscuro: distinto de los verdes/spruce del CSS de Gemini, sigue leyéndose como "algo distinto" a simple vista
+const COLOR_BANCO_IDEAS = "#B98D4C"; // ocre cálido: coherente con el tono "kraft/madera" que ya usa el CSS para acentos informativos
 
 /**
  * Color de texto (blanco o casi-negro) según el brillo del fondo, para que
